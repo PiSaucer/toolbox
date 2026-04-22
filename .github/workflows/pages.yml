@@ -19,15 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build static site
         run: python3 tools/build_site.py
       - name: Upload site folder only
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
   deploy:
+    if: ${{ github.event.repository.has_pages == true }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
