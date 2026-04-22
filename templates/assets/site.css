@@ -1,0 +1,198 @@
+:root {
+  --toolbox-primary: #2980b9;
+  --toolbox-primary-dark: #206894;
+  --toolbox-primary-soft: #eaf4fb;
+  --toolbox-border: #d9e6ef;
+  --toolbox-bg: #f5f8fb;
+  --bs-primary: var(--toolbox-primary);
+  --bs-primary-rgb: 41, 128, 185;
+  --bs-link-color: var(--toolbox-primary);
+  --bs-link-hover-color: var(--toolbox-primary-dark);
+}
+
+body {
+  background: linear-gradient(180deg, #ffffff 0%, var(--toolbox-bg) 42%, #ffffff 100%);
+  min-height: 100vh;
+  color: #17212b;
+}
+
+.navbar {
+  backdrop-filter: saturate(180%) blur(14px);
+  --bs-navbar-active-color: var(--toolbox-primary);
+  --bs-navbar-hover-color: var(--toolbox-primary);
+  position: relative;
+}
+
+.github-corner {
+  color: #fff;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 1035;
+}
+
+.github-corner svg {
+  fill: var(--toolbox-primary);
+}
+
+.github-corner .octo-arm {
+  transform-origin: 130px 106px;
+}
+
+.github-corner:hover .octo-arm {
+  animation: octocat-wave 560ms ease-in-out;
+}
+
+@keyframes octocat-wave {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(-25deg); }
+  40%, 80% { transform: rotate(10deg); }
+}
+
+@media (max-width: 500px) {
+  .github-corner:hover .octo-arm {
+    animation: none;
+  }
+
+  .github-corner .octo-arm {
+    animation: octocat-wave 560ms ease-in-out;
+  }
+}
+
+.brand-mark {
+  align-items: center;
+  background: var(--toolbox-primary);
+  border-radius: 0.5rem;
+  color: #fff;
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.footer-brand {
+  color: #17212b;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.hero,
+.detail-hero {
+  background: #fff;
+  border: 1px solid var(--toolbox-border);
+  border-radius: 1rem;
+  box-shadow: 0 1rem 3rem rgba(23, 33, 43, 0.08);
+}
+
+.section-kicker {
+  color: var(--toolbox-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--toolbox-primary);
+  --bs-btn-border-color: var(--toolbox-primary);
+  --bs-btn-hover-bg: var(--toolbox-primary-dark);
+  --bs-btn-hover-border-color: var(--toolbox-primary-dark);
+  --bs-btn-active-bg: var(--toolbox-primary-dark);
+  --bs-btn-active-border-color: var(--toolbox-primary-dark);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--toolbox-primary);
+  --bs-btn-border-color: var(--toolbox-primary);
+  --bs-btn-hover-bg: var(--toolbox-primary);
+  --bs-btn-hover-border-color: var(--toolbox-primary);
+}
+
+.card {
+  border: 1px solid var(--toolbox-border) !important;
+  border-radius: 0.75rem;
+}
+
+.script-card {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.script-card:hover {
+  box-shadow: 0 1rem 2.25rem rgba(23, 33, 43, 0.12) !important;
+  transform: translateY(-3px);
+}
+
+.card-link-hint {
+  align-items: center;
+  background: var(--toolbox-primary-soft);
+  border-radius: 0.5rem;
+  color: var(--toolbox-primary);
+  display: inline-flex;
+  height: 2.25rem;
+  justify-content: center;
+  width: 2.25rem;
+}
+
+.detail {
+  max-width: 960px;
+}
+
+pre {
+  background: #122536;
+  color: #f4f8fb;
+  overflow-x: auto;
+}
+
+.hash {
+  word-break: break-all;
+}
+
+.download-tabs {
+  border-bottom-color: var(--toolbox-border);
+}
+
+.download-tabs-row {
+  flex-wrap: wrap;
+}
+
+.download-tabs .nav-link {
+  color: #51616f;
+  font-weight: 700;
+}
+
+.download-tabs .nav-link.active {
+  border-color: var(--toolbox-border) var(--toolbox-border) #122536;
+  color: var(--toolbox-primary);
+}
+
+.download-tab-content .tab-pane {
+  border: 1px solid var(--toolbox-border);
+  border-top: 0;
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.download-tab-content pre {
+  border-radius: 0 !important;
+}
+
+.site-footer {
+  background: #fff;
+  border-top: 1px solid var(--toolbox-border);
+}
+
+.footer-bottom {
+  border-top: 1px solid var(--toolbox-border);
+  color: #667482;
+  font-size: 0.875rem;
+}
+
+.black-code {
+  color: var(--bs-body-color) !important;
+}
+
+.platforms {
+  font-size: 1.1rem;
+}

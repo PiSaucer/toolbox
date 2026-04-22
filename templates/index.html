@@ -1,0 +1,35 @@
+    <section class="hero p-4 p-md-5 mb-4">
+      <div class="row align-items-end g-3">
+        <div class="col-lg-9">
+          <!-- <p class="section-kicker mb-3"><i class="bi bi-terminal me-2" aria-hidden="true"></i>toolbox</p> -->
+          <h1 class="display-3 fw-bold lh-1 mb-0">My personal toolbox of utility scripts</h1>
+          <!-- <p class="lead text-secondary mb-0">{{site_description}}</p> -->
+        </div>
+        <div class="col-lg-3 d-flex flex-column flex-sm-row flex-lg-column gap-2">
+          <a class="btn btn-primary btn-lg" href="{{base_path}}/manifest.json"><i class="bi bi-braces me-2" aria-hidden="true"></i>View manifest</a>
+          <a class="btn btn-outline-primary btn-lg" href="{{repository_url}}"><i class="bi bi-github me-2" aria-hidden="true"></i>View source</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="card border-0 shadow-sm mb-4" aria-label="Script filters">
+      <div class="card-body p-4">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-8">
+            <label class="form-label fw-semibold" for="search"><i class="bi bi-search me-1" aria-hidden="true"></i>Search scripts</label>
+            <input class="form-control form-control-lg" id="search" type="search" placeholder="Search by name, tag, platform..." autocomplete="off">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="tag-filter"><i class="bi bi-tags me-1" aria-hidden="true"></i>Tag</label>
+            <select class="form-select form-select-lg" id="tag-filter">
+              <option value="">All tags</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row g-4" id="catalog" aria-live="polite">
+{{cards}}
+    </section>
+    <div class="alert alert-secondary mt-4" id="empty-state" hidden>No scripts match the current filters.</div>

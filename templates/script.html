@@ -1,0 +1,97 @@
+    <article class="detail mx-auto">
+      <a class="btn btn-outline-primary mb-4" href="{{base_path}}/"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back to catalog</a>
+
+      <header class="detail-hero p-4 p-md-4 mb-4">
+        <h1 class="display-3 fw-bold lh-1">{{name}}</h1>
+        <p class="section-kicker mb-1">{{category}} / v{{version}}</p>
+        <p class="lead text-secondary mb-2">{{description}}</p>
+        <section class="d-flex flex-wrap gap-2" aria-label="Tags">{{tags}}</section>
+      </header>
+
+      <p class="fs-5 text-secondary mb-4">{{long_description}}</p>
+
+      <div class="row g-4 mb-4">
+        <section class="col-md-6">
+          <div class="card h-100 shadow-sm border-0">
+            <div class="card-body p-4">
+              <h2 class="h5 mb-3"><i class="bi bi-check2-square me-2 text-primary" aria-hidden="true"></i>Requirements</h2>
+              <ul class="mb-0">{{requirements}}</ul>
+            </div>
+          </div>
+        </section>
+        <section class="col-md-6">
+          <div class="card h-100 shadow-sm border-0">
+            <div class="card-body p-4">
+              <h2 class="h5 mb-3"><i class="bi bi-window-stack me-2 text-primary " aria-hidden="true"></i>Platforms</h2>
+              <p class="mb-0 d-flex flex-wrap gap-2 platforms">{{platforms}}</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+          <h2 class="h5 mb-3"><i class="bi bi-terminal me-2 text-primary" aria-hidden="true"></i>Usage</h2>
+          <pre class="rounded-3 p-3 mb-0"><code class="{{script_language}}">{{usage}}</code></pre>
+        </div>
+      </section>
+
+      <section class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+            <div>
+              <h2 class="h5 mb-1"><i class="bi bi-download me-2 text-primary" aria-hidden="true"></i>Download</h2>
+              <p class="text-secondary mb-0">Install quickly or copy a command for your shell.</p>
+            </div>
+            <div class="gap-2">
+              <a class="btn btn-primary" href="{{download_url}}"><i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>Raw file</a>
+              <a class="btn btn-outline-primary" href="{{source_url}}"><i class="bi bi-github me-2" aria-hidden="true"></i>View source</a>
+            </div>
+          </div>
+          <div class="d-flex align-items-end justify-content-between gap-2 download-tabs-row">
+            <ul class="nav nav-tabs download-tabs" id="downloadTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="curl-tab" data-bs-toggle="tab" data-bs-target="#curl-panel" type="button" role="tab" aria-controls="curl-panel" aria-selected="true"><i class="bi bi-terminal me-1" aria-hidden="true"></i>curl</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="wget-tab" data-bs-toggle="tab" data-bs-target="#wget-panel" type="button" role="tab" aria-controls="wget-panel" aria-selected="false"><i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i>wget</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="powershell-tab" data-bs-toggle="tab" data-bs-target="#powershell-panel" type="button" role="tab" aria-controls="powershell-panel" aria-selected="false"><i class="bi bi-windows me-1" aria-hidden="true"></i>PowerShell</button>
+              </li>
+            </ul>
+            <button type="button" class="btn btn-sm btn-outline-primary mb-2" data-copy-active-tab><i class="bi bi-clipboard2-fill"></i> Copy command</button>
+          </div>
+          <div class="tab-content download-tab-content mb-4">
+            <div class="tab-pane fade show active" id="curl-panel" role="tabpanel" aria-labelledby="curl-tab" tabindex="0">
+              <pre class="p-3 mb-0"><code id="curl-command" class="language-bash">{{curl_command}}</code></pre>
+            </div>
+            <div class="tab-pane fade" id="wget-panel" role="tabpanel" aria-labelledby="wget-tab" tabindex="0">
+              <pre class="p-3 mb-0"><code id="wget-command" class="language-bash">{{wget_command}}</code></pre>
+            </div>
+            <div class="tab-pane fade" id="powershell-panel" role="tabpanel" aria-labelledby="powershell-tab" tabindex="0">
+              <pre class="p-3 mb-0"><code id="powershell-command" class="language-powershell">{{powershell_command}}</code></pre>
+            </div>
+          </div>
+
+          <h2 class="h5 mb-3"><i class="bi bi-shield-check me-2 text-primary" aria-hidden="true"></i>Integrity</h2>
+          <div class="mb-2 d-flex align-items-center gap-2">
+            <p class="text-secondary mb-0">SHA256</p>
+            <code class="hash text-break black-code">{{sha256}}</code>
+          </div>
+        </div>
+      </section>
+
+      <section class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+            <div>
+              <h2 class="h5 mb-1"><i class="bi bi-clipboard-check me-2 text-primary" aria-hidden="true"></i>Copy and Paste Script</h2>
+              <p class="text-secondary mb-0">Use this when you want to copy the full script directly.</p>
+            </div>
+            <button type="button" class="btn btn-outline-primary align-self-start" data-copy-button data-copy-target="script-content"><i class="bi bi-clipboard2-fill"></i> Copy script</button>
+          </div>
+          <pre class="rounded-3 p-3 mb-0"><code id="script-content" class="{{script_language}}">{{script_content}}</code></pre>
+        </div>
+      </section>
+    </article>
