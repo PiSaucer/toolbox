@@ -1,0 +1,21 @@
+{
+  "id": "md-to-tex",
+  "name": "Markdown to TeX",
+  "entry": "md-to-tex.sh",
+  "path": "scripts/md-to-tex.sh",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "sh",
+  "category": "convert",
+  "platforms": ["Linux", "MacOS"],
+  "description": "Convert Markdown to LaTeX using pandoc.",
+  "long_description": "Converts a Markdown file or a directory of Markdown files into LaTeX using pandoc. Supports input and output flags and can batch-convert directories.",
+  "requirements": ["pandoc"],
+  "tags": ["Markdown", "LaTeX", "Pandoc", "Convert"],
+  "usage": [
+    "./scripts/md-to-tex.sh -f notes.md",
+    "./scripts/md-to-tex.sh --input notes.md --output notes.tex",
+    "./scripts/md-to-tex.sh -f ./docs"
+  ]
+}

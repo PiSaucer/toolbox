@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Toolbox Script Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "entry",
+    "path",
+    "version",
+    "description",
+    "long_description",
+    "requirements",
+    "tags",
+    "usage"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Stable URL identifier."
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "entry": { "type": "string", "minLength": 1 },
+    "path": {
+      "type": "string",
+      "pattern": "^scripts/[^/].*",
+      "description": "Repository-relative path to the script file."
+    },
+    "version": { "type": "string", "minLength": 1 },
+    "author": { "type": "string" },
+    "license": { "type": "string" },
+    "language": { "type": "string" },
+    "category": { "type": "string" },
+    "platforms": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "long_description": { "type": "string", "minLength": 1 },
+    "requirements": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "usage": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    }
+  }
+}
