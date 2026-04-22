@@ -29,6 +29,13 @@ body {
   right: 0;
   top: 0;
   z-index: 1035;
+  display: none !important; /* Hidden on mobile */
+}
+
+@media only screen and (min-width: 990px) {
+  .github-corner { 
+    display: block !important; /* Visible on desktop */
+  }
 }
 
 .github-corner svg {
