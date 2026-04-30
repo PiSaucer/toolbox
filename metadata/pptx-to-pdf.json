@@ -1,0 +1,23 @@
+{
+  "id": "pptx-to-pdf",
+  "name": "PowerPoint to PDF",
+  "entry": "pptx-to-pdf.sh",
+  "path": "scripts/pptx-to-pdf.sh",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "sh",
+  "category": "convert",
+  "platforms": ["Linux", "MacOS"],
+  "description": "Convert PowerPoint files to PDF using LibreOffice.",
+  "long_description": "Converts a PowerPoint file or a directory of PowerPoint files to PDF using LibreOffice's soffice command.",
+  "requirements": ["libreoffice", "soffice"],
+  "tags": ["PDF", "PowerPoint", "PPTX", "LibreOffice", "soffice", "Convert"],
+  "usage": [
+    "./scripts/pptx-to-pdf.sh -f notes.pptx",
+    "./scripts/pptx-to-pdf.sh -i notes.pptx -o notes.pdf",
+    "./scripts/pptx-to-pdf.sh --input=notes.pptx",
+    "./scripts/pptx-to-pdf.sh --input=notes.pptx --output=notes.pdf",
+    "./scripts/pptx-to-pdf.sh -i ./docs"
+  ]
+}
