@@ -1,1 +1,1 @@
-templates/ linguist-detectable=false
+templates/*.* linguist-detectable=false
