@@ -1,0 +1,21 @@
+{
+  "id": "pip-combine",
+  "name": "PIP Combine",
+  "entry": "pip-combine.py",
+  "path": "scripts/pip-combine.py",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "python",
+  "category": "video",
+  "platforms": ["Linux", "macOS", "Windows"],
+  "description": "Overlay one video onto another to create a picture-in-picture (PIP) output.",
+  "long_description": "A CLI tool that uses ffmpeg to overlay an input video onto a background video with scaling, positioning, audio mixing, and frame rate normalization. Supports corner placement, interpolation, and configurable output quality.",
+  "requirements": ["ffmpeg", "ffprobe"],
+  "tags": ["Video", "Editing", "Overlay", "ffmpeg"],
+  "usage": [
+    "./scripts/pip-combine.py --overlay overlay.mp4 --background background.mp4",
+    "./scripts/pip-combine.py -i overlay.mp4 -b background.mp4 -o output.mp4",
+    "./scripts/pip-combine.py --overlay cam.mp4 --background screen.mp4 --corner br --scale-rel 0.33"
+  ]
+}
