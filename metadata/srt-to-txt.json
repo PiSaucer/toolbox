@@ -1,0 +1,21 @@
+{
+  "id": "srt-to-txt",
+  "name": "SRT to TXT",
+  "entry": "srt-to-txt.py",
+  "path": "scripts/srt-to-txt.py",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "python",
+  "category": "convert",
+  "platforms": ["Linux", "MacOS", "Windows"],
+  "description": "Convert SRT subtitle files to clean UTF-8 plaintext.",
+  "long_description": "Removes SRT cue numbers and timecodes while preserving subtitle text in a UTF-8 text file. Supports an optional output path, UTF-8 byte-order marks, Windows line endings, and clear command-line error reporting.",
+  "requirements": ["Python 3"],
+  "tags": ["SRT", "Subtitles", "Text", "Python", "Convert"],
+  "usage": [
+    "python3 ./scripts/srt-to-txt.py subtitles.srt",
+    "python3 ./scripts/srt-to-txt.py subtitles.srt transcript.txt",
+    "python3 ./scripts/srt-to-txt.py \"My Subtitles.srt\" \"output/My Transcript.txt\""
+  ]
+}
