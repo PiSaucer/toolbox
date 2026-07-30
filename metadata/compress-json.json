@@ -1,0 +1,21 @@
+{
+  "id": "compress-json",
+  "name": "Compress JSON",
+  "entry": "compress-json.sh",
+  "path": "scripts/compress-json.sh",
+  "version": "1.3.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "sh",
+  "category": "convert",
+  "platforms": ["Linux", "macOS"],
+  "description": "Minify a JSON file or a directory tree of JSON files.",
+  "long_description": "Compresses JSON with jq while preserving filenames and relative directory paths in the output directory. Accepts a single file or recursively processes a directory, reports successful and failed files, and exits with an error if any JSON input is invalid.",
+  "requirements": ["jq"],
+  "tags": ["JSON", "Compression", "Minify", "jq"],
+  "usage": [
+    "sh ./scripts/compress-json.sh --input data.json --output min",
+    "sh ./scripts/compress-json.sh -f ./data -o ./min",
+    "sh ./scripts/compress-json.sh --input=./data --output=./build/min"
+  ]
+}
