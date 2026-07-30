@@ -61,7 +61,7 @@ def fetch_manifest(url: str) -> dict[str, Any]:
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "toolbox-tui/1.0",
+            "User-Agent": f"toolbox-tui/{__version__}",
             "Accept": "application/json",
         },
     )
@@ -124,7 +124,7 @@ def download_script(script: dict[str, Any], output_dir: Path) -> Path:
 
     request = urllib.request.Request(
         download_url,
-        headers={"User-Agent": "toolbox-tui/1.0"},
+        headers={"User-Agent": f"toolbox-tui/{__version__}"},
     )
     temporary_path: Path | None = None
 
@@ -179,7 +179,7 @@ def fetch_verified_script(script: dict[str, Any]) -> tuple[bytes, str]:
     download_url, expected_sha256, filename = script_download_details(script)
     request = urllib.request.Request(
         download_url,
-        headers={"User-Agent": "toolbox-tui/1.0"},
+        headers={"User-Agent": f"toolbox-tui/{__version__}"},
     )
     with urllib.request.urlopen(request, timeout=30) as response:
         status = getattr(response, "status", 200)
