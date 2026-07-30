@@ -1,0 +1,22 @@
+{
+  "id": "goodnotes-audio-extract",
+  "name": "Goodnotes Audio Extractor",
+  "entry": "goodnotes-audio-extract.py",
+  "path": "scripts/goodnotes-audio-extract.py",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "python",
+  "category": "audio",
+  "platforms": ["Linux", "MacOS", "Windows"],
+  "description": "Extract audio attachments from Goodnotes files and convert them to MP3.",
+  "long_description": "Safely extracts every attachments directory from a Goodnotes archive, identifies audio streams, copies existing MP3 recordings, converts other audio formats to MP3 with ffmpeg, preserves recording dates, and writes an optional CSV index for repeat processing.",
+  "requirements": ["Python 3.10+", "ffmpeg", "ffprobe"],
+  "tags": ["Goodnotes", "Audio", "MP3", "ffmpeg", "Extract"],
+  "usage": [
+    "python3 ./scripts/goodnotes-audio-extract.py --goodnotes Notes.goodnotes",
+    "python3 ./scripts/goodnotes-audio-extract.py -g Notes.goodnotes -p ./recordings",
+    "python3 ./scripts/goodnotes-audio-extract.py -g Notes.goodnotes -i mp3_files.csv -o updated.csv",
+    "python3 ./scripts/goodnotes-audio-extract.py -g Notes.goodnotes --bitrate 256k --min-duration 1"
+  ]
+}
