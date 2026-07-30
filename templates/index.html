@@ -12,6 +12,110 @@
       </div>
     </section>
 
+    <section class="card launcher-card border-0 shadow-sm mb-4" aria-labelledby="run-heading">
+      <div class="card-body p-4 p-md-5">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-start gap-3 mb-4">
+          <div>
+            <h2 class="h3 mb-2 fw-bold" id="run-heading"><i class="bi bi-lightning-charge me-2" aria-hidden="true"></i>Run without installing</h2>
+            <p class="text-secondary mb-0">Open the interactive script browser immediately without changing your PATH or shell configuration.</p>
+          </div>
+          <a class="btn btn-outline-primary flex-shrink-0" href="{{launcher_url}}" download="toolbox.py">
+            <i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>Download toolbox.py
+          </a>
+        </div>
+
+        <div class="d-flex align-items-end justify-content-between gap-2 download-tabs-row">
+          <ul class="nav nav-tabs download-tabs" id="runTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="run-curl-tab" data-bs-toggle="tab" data-bs-target="#run-curl-panel" type="button" role="tab" aria-controls="run-curl-panel" aria-selected="true">
+                <i class="bi bi-terminal me-1" aria-hidden="true"></i>curl
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="run-wget-tab" data-bs-toggle="tab" data-bs-target="#run-wget-panel" type="button" role="tab" aria-controls="run-wget-panel" aria-selected="false">
+                <i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i>wget
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="run-powershell-tab" data-bs-toggle="tab" data-bs-target="#run-powershell-panel" type="button" role="tab" aria-controls="run-powershell-panel" aria-selected="false">
+                <i class="bi bi-windows me-1" aria-hidden="true"></i>PowerShell
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="run-python-tab" data-bs-toggle="tab" data-bs-target="#run-python-panel" type="button" role="tab" aria-controls="run-python-panel" aria-selected="false">
+                <i class="bi bi-filetype-py me-1" aria-hidden="true"></i>Python
+              </button>
+            </li>
+          </ul>
+          <button type="button" class="btn btn-sm btn-outline-primary mb-2" data-copy-active-tab data-tab-list="#runTabs">
+            <i class="bi bi-clipboard2-fill me-1" aria-hidden="true"></i>Copy command
+          </button>
+        </div>
+
+        <div class="tab-content download-tab-content">
+          <div class="tab-pane fade show active" id="run-curl-panel" role="tabpanel" aria-labelledby="run-curl-tab" tabindex="0">
+            <pre class="p-3 mb-0"><code class="language-bash">python3 &lt;(curl -fsSL {{launcher_url}})</code></pre>
+          </div>
+          <div class="tab-pane fade" id="run-wget-panel" role="tabpanel" aria-labelledby="run-wget-tab" tabindex="0">
+            <pre class="p-3 mb-0"><code class="language-bash">python3 &lt;(wget -qO- {{launcher_url}})</code></pre>
+          </div>
+          <div class="tab-pane fade" id="run-powershell-panel" role="tabpanel" aria-labelledby="run-powershell-tab" tabindex="0">
+            <pre class="p-3 mb-0"><code class="language-powershell">python -c (Invoke-WebRequest -Uri "{{launcher_url}}").Content</code></pre>
+          </div>
+          <div class="tab-pane fade" id="run-python-panel" role="tabpanel" aria-labelledby="run-python-tab" tabindex="0">
+            <pre class="p-3 mb-0"><code class="language-bash">python3 -c 'import urllib.request; exec(urllib.request.urlopen("{{launcher_url}}").read())'</code></pre>
+          </div>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-start gap-3 mb-4">
+          <div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+              <h2 class="h3 mb-0 fw-bold" id="installer-heading"><i class="bi bi-box-arrow-in-down me-2" aria-hidden="true"></i>Install the launcher</h2>
+              <span class="badge text-bg-primary" data-detected-os>Choose your OS</span>
+            </div>
+            <p class="text-secondary mb-0">Add a permanent <code>toolbox</code> command with automatic PATH setup and tab completion for your shell.</p>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-primary flex-shrink-0" href="{{install_sh_url}}" download="install.sh">
+              <i class="bi bi-apple me-2" aria-hidden="true"></i>macOS / Linux
+            </a>
+            <!-- <a class="btn btn-outline-primary flex-shrink-0" href="{{install_ps1_url}}" download="install.ps1">
+              <i class="bi bi-windows me-2" aria-hidden="true"></i>Windows
+            </a> -->
+          </div>
+        </div>
+
+        <div class="d-flex align-items-end justify-content-between gap-2 download-tabs-row">
+          <ul class="nav nav-tabs download-tabs" id="installerTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="installer-macos-tab" data-bs-toggle="tab" data-bs-target="#installer-macos-panel" data-os-tab="macos" type="button" role="tab" aria-controls="installer-macos-panel" aria-selected="true"><i class="bi bi-apple me-1" aria-hidden="true"></i>macOS</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="installer-linux-tab" data-bs-toggle="tab" data-bs-target="#installer-linux-panel" data-os-tab="linux" type="button" role="tab" aria-controls="installer-linux-panel" aria-selected="false"><i class="bi bi-ubuntu me-1" aria-hidden="true"></i>Linux</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <!-- <button class="nav-link" id="installer-windows-tab" data-bs-toggle="tab" data-bs-target="#installer-windows-panel" data-os-tab="windows" type="button" role="tab" aria-controls="installer-windows-panel" aria-selected="false"><i class="bi bi-windows me-1" aria-hidden="true"></i>PowerShell</button> -->
+            </li>
+          </ul>
+          <button type="button" class="btn btn-sm btn-outline-primary mb-2" data-copy-active-tab data-tab-list="#installerTabs"><i class="bi bi-clipboard2-fill me-1" aria-hidden="true"></i>Copy command</button>
+        </div>
+
+        <div class="tab-content download-tab-content">
+          <div class="tab-pane fade show active" id="installer-macos-panel" role="tabpanel" aria-labelledby="installer-macos-tab" tabindex="0">
+            <pre class="p-3 mb-0"><code class="language-bash">curl -fsSL {{install_sh_url}} | sh</code></pre>
+          </div>
+          <div class="tab-pane fade" id="installer-linux-panel" role="tabpanel" aria-labelledby="installer-linux-tab" tabindex="0">
+            <pre class="p-3 mb-0"><code class="language-bash">curl -fsSL {{install_sh_url}} | sh</code></pre>
+          </div>
+          <div class="tab-pane fade" id="installer-windows-panel" role="tabpanel" aria-labelledby="installer-windows-tab" tabindex="0">
+            <pre class="p-3 mb-0"><code class="language-powershell">irm {{install_ps1_url}} | iex</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="card border-0 shadow-sm mb-4" aria-label="Script filters">
       <div class="card-body p-4">
         <div class="row g-3 align-items-end">

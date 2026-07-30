@@ -1,0 +1,28 @@
+#compdef toolbox
+
+_toolbox_candidates() {
+  local -a options scripts
+  options=(
+    '-h:show help'
+    '--help:show help'
+    '--version:show installed version'
+    '-m:use a different manifest URL'
+    '--manifest:use a different manifest URL'
+    '-o:choose the download directory'
+    '--output-dir:choose the download directory'
+  )
+  scripts=("${(@f)$($words[1] --completion-script-ids 2>/dev/null)}")
+  _describe 'option' options
+  _describe 'script' scripts
+}
+
+_toolbox() {
+  _arguments \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '--version[show installed version]' \
+    '(-m --manifest)'{-m,--manifest}'[manifest URL]:URL:_urls' \
+    '(-o --output-dir)'{-o,--output-dir}'[download directory]:directory:_directories' \
+    '*:script or option:_toolbox_candidates'
+}
+
+_toolbox "$@"

@@ -51,7 +51,10 @@
           <div class="d-flex align-items-end justify-content-between gap-2 download-tabs-row">
             <ul class="nav nav-tabs download-tabs" id="downloadTabs" role="tablist">
               <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="curl-tab" data-bs-toggle="tab" data-bs-target="#curl-panel" type="button" role="tab" aria-controls="curl-panel" aria-selected="true"><i class="bi bi-terminal me-1" aria-hidden="true"></i>curl</button>
+                <button class="nav-link active" id="launcher-tab" data-bs-toggle="tab" data-bs-target="#launcher-panel" type="button" role="tab" aria-controls="launcher-panel" aria-selected="true"><i class="bi bi-tools me-1" aria-hidden="true"></i>Launcher</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="curl-tab" data-bs-toggle="tab" data-bs-target="#curl-panel" type="button" role="tab" aria-controls="curl-panel" aria-selected="false"><i class="bi bi-terminal me-1" aria-hidden="true"></i>curl</button>
               </li>
               <li class="nav-item" role="presentation">
                 <button class="nav-link" id="wget-tab" data-bs-toggle="tab" data-bs-target="#wget-panel" type="button" role="tab" aria-controls="wget-panel" aria-selected="false"><i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i>wget</button>
@@ -59,11 +62,17 @@
               <li class="nav-item" role="presentation">
                 <button class="nav-link" id="powershell-tab" data-bs-toggle="tab" data-bs-target="#powershell-panel" type="button" role="tab" aria-controls="powershell-panel" aria-selected="false"><i class="bi bi-windows me-1" aria-hidden="true"></i>PowerShell</button>
               </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="python-tab" data-bs-toggle="tab" data-bs-target="#python-panel" type="button" role="tab" aria-controls="python-panel" aria-selected="false"><i class="bi bi-filetype-py me-1" aria-hidden="true"></i>Python</button>
+              </li>
             </ul>
             <button type="button" class="btn btn-sm btn-outline-primary mb-2" data-copy-active-tab><i class="bi bi-clipboard2-fill"></i> Copy command</button>
           </div>
           <div class="tab-content download-tab-content mb-4">
-            <div class="tab-pane fade show active" id="curl-panel" role="tabpanel" aria-labelledby="curl-tab" tabindex="0">
+            <div class="tab-pane fade show active" id="launcher-panel" role="tabpanel" aria-labelledby="launcher-tab" tabindex="0">
+              <pre class="p-3 mb-0"><code id="launcher-command" class="language-bash">{{launcher_command}}</code></pre>
+            </div>
+            <div class="tab-pane fade" id="curl-panel" role="tabpanel" aria-labelledby="curl-tab" tabindex="0">
               <pre class="p-3 mb-0"><code id="curl-command" class="language-bash">{{curl_command}}</code></pre>
             </div>
             <div class="tab-pane fade" id="wget-panel" role="tabpanel" aria-labelledby="wget-tab" tabindex="0">
@@ -71,6 +80,9 @@
             </div>
             <div class="tab-pane fade" id="powershell-panel" role="tabpanel" aria-labelledby="powershell-tab" tabindex="0">
               <pre class="p-3 mb-0"><code id="powershell-command" class="language-powershell">{{powershell_command}}</code></pre>
+            </div>
+            <div class="tab-pane fade" id="python-panel" role="tabpanel" aria-labelledby="python-tab" tabindex="0">
+              <pre class="p-3 mb-0"><code id="python-command" class="language-bash">{{python_command}}</code></pre>
             </div>
           </div>
 

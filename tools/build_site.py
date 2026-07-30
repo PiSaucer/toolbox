@@ -232,7 +232,9 @@ def minimal_manifest(scripts: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "id",
         "name",
         "version",
+        "language",
         "description",
+        "usage",
         "requirements",
         "tags",
         "platforms",
@@ -296,6 +298,9 @@ def render_index(config: dict[str, Any], scripts: list[dict[str, Any]]) -> str:
         {
             "site_description": escaped(config["site_description"]),
             "base_path": escaped(config["base_path"]),
+            "launcher_url": escaped(f"{config['base_url']}/toolbox.py"),
+            "install_sh_url": escaped(f"{config['base_url']}/install.sh"),
+            "install_ps1_url": escaped(f"{config['base_url']}/install.ps1"),
             "repository_url": escaped(config["repository_url"]),
             "cards": "\n".join(cards),
         },
@@ -326,9 +331,16 @@ def render_script_page(config: dict[str, Any], script: dict[str, Any]) -> str:
             "sha256": escaped(script["sha256"]),
             "source_url": escaped(script["source_url"]),
             "tags": render_badges(script.get("tags", [])),
+            "launcher_command": escaped(
+                f'python3 <(curl -fsSL {config["base_url"]}/toolbox.py) {script["id"]}'
+            ),
             "curl_command": escaped(f'curl -fsSL "{download_url}" -o "{filename}"'),
             "wget_command": escaped(f'wget -O "{filename}" "{download_url}"'),
             "powershell_command": escaped(f'Invoke-WebRequest -Uri "{download_url}" -OutFile "{filename}"'),
+            "python_command": escaped(
+                "python3 -c "
+                f"\"import urllib.request; urllib.request.urlretrieve('{download_url}', '{filename}')\""
+            ),
             "script_content": escaped(script["script_content"]),
         },
     )
@@ -354,6 +366,11 @@ def generate(config: dict[str, Any], scripts: list[dict[str, Any]]) -> None:
     SITE_DIR.mkdir(parents=True)
     write_text(SITE_DIR / ".nojekyll", "")
     copy_assets()
+    shutil.copy2(ROOT / "toolbox.py", SITE_DIR / "toolbox.py")
+    shutil.copy2(ROOT / "install.sh", SITE_DIR / "install.sh")
+    # shutil.copy2(ROOT / "install.ps1", SITE_DIR / "install.ps1")
+    shutil.copy2(ROOT / "uninstall.sh", SITE_DIR / "uninstall.sh")
+    # shutil.copy2(ROOT / "uninstall.ps1", SITE_DIR / "uninstall.ps1")
     write_text(SITE_DIR / "index.html", render_index(config, scripts))
     write_text(SITE_DIR / "manifest.json", json.dumps({"scripts": minimal_manifest(scripts)}, indent=None, sort_keys=True) + "\n")
     for script in scripts:
@@ -371,6 +388,9 @@ def main() -> int:
         scripts = load_scripts(config, schema)
         for template in ("layout.html", "index.html", "script.html", "components/script-card.html", "components/badge.html", "components/platform-badge.html", "components/list-item.html", "components/script-data.html"):
             read_template(template)
+        for installer in ("install.sh", "install.ps1"):
+            if not (ROOT / installer).is_file():
+                fail(f"missing installer: {ROOT / installer}")
         if not args.check:
             generate(config, scripts)
     except ValueError as exc:
