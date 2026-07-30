@@ -1,0 +1,22 @@
+{
+  "id": "pdf-to-jpg",
+  "name": "PDF to JPG",
+  "entry": "pdf-to-jpg.sh",
+  "path": "scripts/pdf-to-jpg.sh",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "sh",
+  "category": "convert",
+  "platforms": ["Linux", "MacOS"],
+  "description": "Render PDF pages as high-quality JPG images using ImageMagick.",
+  "long_description": "Renders every page of a PDF as a numbered JPG image. Supports single files and recursive directory conversion, configurable DPI and JPG quality, optional output directories, and preserved subdirectories for batch output.",
+  "requirements": ["ImageMagick", "Ghostscript"],
+  "tags": ["PDF", "JPG", "ImageMagick", "Ghostscript", "Convert"],
+  "usage": [
+    "./scripts/pdf-to-jpg.sh -i document.pdf",
+    "./scripts/pdf-to-jpg.sh --input document.pdf --output ./images --dpi 300 --quality 92",
+    "./scripts/pdf-to-jpg.sh -i ./documents -o ./images",
+    "./scripts/pdf-to-jpg.sh --input=document.pdf --dpi=600 --quality=95"
+  ]
+}
