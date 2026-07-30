@@ -1,0 +1,84 @@
+name: Update Homebrew tap
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  update-tap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate and download release
+        id: release
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must use the vMAJOR.MINOR.PATCH format." >&2
+            exit 1
+          fi
+
+          version="${TAG#v}"
+          archive="https://github.com/PiSaucer/toolbox/archive/refs/tags/${TAG}.tar.gz"
+
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output toolbox.tar.gz \
+            "$archive"
+
+          toolbox_path="$(
+            tar -tzf toolbox.tar.gz |
+              awk -F/ 'NF == 2 && $2 == "toolbox.py" { print; exit }'
+          )"
+          if [ -z "$toolbox_path" ]; then
+            echo "Release archive does not contain toolbox.py at its root." >&2
+            exit 1
+          fi
+          archive_version="$(
+            tar -xOf toolbox.tar.gz "$toolbox_path" |
+              sed -n 's/^__version__ = "\([^"]*\)"$/\1/p'
+          )"
+          if [ "$archive_version" != "$version" ]; then
+            echo "Tag version ${version} does not match toolbox.py version ${archive_version}." >&2
+            exit 1
+          fi
+
+          sha256="$(sha256sum toolbox.tar.gz | cut -d ' ' -f 1)"
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Check out Homebrew tap
+        uses: actions/checkout@v6
+        with:
+          repository: PiSaucer/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        working-directory: homebrew-tap
+        env:
+          ARCHIVE: ${{ steps.release.outputs.archive }}
+          SHA256: ${{ steps.release.outputs.sha256 }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          ruby -e '
+            path = "Formula/toolbox.rb"
+            formula = File.read(path)
+            url_changed = formula.sub!(/^\s*url ".*"$/, %(  url "#{ENV.fetch("ARCHIVE")}"))
+            sha_changed = formula.sub!(/^\s*sha256 ".*"$/, %(  sha256 "#{ENV.fetch("SHA256")}"))
+            abort "Formula is missing its url declaration" unless url_changed
+            abort "Formula is missing its sha256 declaration" unless sha_changed
+            File.write(path, formula)
+          '
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/toolbox.rb
+          git diff --cached --check
+          git commit -m "toolbox ${VERSION}"
+          git push
