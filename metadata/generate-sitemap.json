@@ -1,0 +1,21 @@
+{
+  "id": "generate-sitemap",
+  "name": "Sitemap Generator",
+  "entry": "generate-sitemap.py",
+  "path": "scripts/generate-sitemap.py",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "python",
+  "category": "web",
+  "platforms": ["Linux", "MacOS", "Windows"],
+  "description": "Generate a standards-compliant sitemap.xml from a directory of HTML files.",
+  "long_description": "Recursively finds HTML and HTM files, converts their relative paths to encoded public URLs, includes each file's UTC modification time, escapes XML-sensitive characters, and writes a sitemap.xml file for search-engine indexing.",
+  "requirements": ["Python 3.9+"],
+  "tags": ["Sitemap", "XML", "HTML", "SEO", "Web"],
+  "usage": [
+    "python3 ./scripts/generate-sitemap.py --root ./site --base-url https://example.com/",
+    "python3 ./scripts/generate-sitemap.py --root ./public --base-url https://example.com/docs/",
+    "python3 ./scripts/generate-sitemap.py --root ./site --base-url https://example.com/ --output ./dist/sitemap.xml"
+  ]
+}
