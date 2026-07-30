@@ -300,7 +300,7 @@ def render_index(config: dict[str, Any], scripts: list[dict[str, Any]]) -> str:
             "base_path": escaped(config["base_path"]),
             "launcher_url": escaped(f"{config['base_url']}/toolbox.py"),
             "install_sh_url": escaped(f"{config['base_url']}/install.sh"),
-            # "install_ps1_url": escaped(f"{config['base_url']}/install.ps1"),
+            "install_ps1_url": escaped(f"{config['base_url']}/install.ps1"),
             "repository_url": escaped(config["repository_url"]),
             "cards": "\n".join(cards),
         },
@@ -389,7 +389,7 @@ def main() -> int:
         for template in ("layout.html", "index.html", "script.html", "components/script-card.html", "components/badge.html", "components/platform-badge.html", "components/list-item.html", "components/script-data.html"):
             read_template(template)
         # for installer in ("install.sh", "install.ps1"):
-        for installer in ("install.sh"):
+        for installer in ("install.sh",):
             if not (ROOT / installer).is_file():
                 fail(f"missing installer: {ROOT / installer}")
         if not args.check:
