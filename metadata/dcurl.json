@@ -1,0 +1,21 @@
+{
+  "id": "dcurl",
+  "name": "Directory Copy URL",
+  "entry": "dcurl.sh",
+  "path": "scripts/dcurl.sh",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "sh",
+  "category": "download",
+  "platforms": ["Linux", "MacOS"],
+  "description": "Recursively download a public web directory with wget.",
+  "long_description": "Wraps wget's recursive and no-parent options with URL validation, safe argument handling, dependency checks, colored status output, and an optional local download directory.",
+  "requirements": ["wget"],
+  "tags": ["Download", "Directory", "URL", "wget", "Web"],
+  "usage": [
+    "./scripts/dcurl.sh https://example.com/files/",
+    "./scripts/dcurl.sh https://example.com/files/ -o ./downloads",
+    "./scripts/dcurl.sh --url https://example.com/files/ --output ./downloads"
+  ]
+}
