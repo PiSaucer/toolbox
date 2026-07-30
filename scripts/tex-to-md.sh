@@ -5,6 +5,7 @@
 # Version 1.0.0
 
 # LaTex to Markdown
+# Usage: ./tex-to-md.sh -i file.tex|dir [-o outdir]
 
 # Color codes
 # https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux

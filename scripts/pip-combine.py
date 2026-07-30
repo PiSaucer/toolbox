@@ -22,15 +22,50 @@ CORNER_CHOICES = {
 }
 
 def ensure_tool(name):
+    """Require an executable to be available on ``PATH``.
+
+    Args:
+        name: Executable name to locate.
+
+    Raises:
+        SystemExit: If the executable cannot be found.
+    """
     if not shutil.which(name):
         sys.exit(f"Error: {name} not found in PATH. Install {name} and try again.")
 
 def ffprobe_json(args):
+    """Run ffprobe and decode its JSON output.
+
+    Args:
+        args: Complete ffprobe command and argument sequence.
+
+    Returns:
+        The decoded JSON value.
+
+    Raises:
+        SystemExit: If ffprobe is not available.
+        subprocess.CalledProcessError: If ffprobe exits unsuccessfully.
+        json.JSONDecodeError: If ffprobe output is not valid JSON.
+    """
     ensure_tool("ffprobe")
     out = subprocess.check_output(args, stderr=subprocess.STDOUT)
     return json.loads(out.decode("utf-8"))
 
 def ffprobe_has_stream(path: Path, kind: str) -> bool:
+    """Check whether a media file contains an audio or video stream.
+
+    Args:
+        path: Media file to inspect.
+        kind: ``audio`` to select audio; every other value selects video.
+
+    Returns:
+        ``True`` when ffprobe reports at least one selected stream, otherwise
+        ``False``.
+
+    Raises:
+        SystemExit: If ffprobe is not available.
+    """
+    # ffprobe uses single-letter stream selectors.
     sel = "a" if kind == "audio" else "v"
     try:
         data = ffprobe_json([
@@ -42,6 +77,14 @@ def ffprobe_has_stream(path: Path, kind: str) -> bool:
         return False
 
 def fraction_to_float(s: str) -> float:
+    """Convert a number or fractional string to a float.
+
+    Args:
+        s: Numeric text such as ``29.97`` or ``30000/1001``.
+
+    Returns:
+        The parsed value, or ``0.0`` for invalid input or a zero denominator.
+    """
     try:
         if "/" in s:
             n, d = s.split("/", 1)
@@ -53,6 +96,17 @@ def fraction_to_float(s: str) -> float:
         return 0.0
 
 def ffprobe_fps(path: Path) -> float:
+    """Read the best available video frame rate from a media file.
+
+    Args:
+        path: Media file to inspect.
+
+    Returns:
+        A positive frame rate, or ``0.0`` when probing or parsing fails.
+
+    Raises:
+        SystemExit: If ffprobe is not available.
+    """
     try:
         data = ffprobe_json([
             "ffprobe", "-v", "error", "-select_streams", "v:0",
@@ -60,6 +114,8 @@ def ffprobe_fps(path: Path) -> float:
             "-of", "json", str(path)
         ])
         s = (data.get("streams") or [{}])[0]
+        
+        # Prefer the average rate; fall back to the declared real/base rate.
         for key in ("avg_frame_rate", "r_frame_rate"):
             if key in s and s[key]:
                 fps = fraction_to_float(s[key])
@@ -70,7 +126,31 @@ def ffprobe_fps(path: Path) -> float:
         return 0.0
 
 def prompt_if_missing(args):
+    """Interactively fill media and layout options missing from parsed arguments.
+
+    Args:
+        args: Argparse namespace to update in place.
+
+    Returns:
+        The updated namespace.
+
+    Raises:
+        EOFError: If interactive input ends before a required answer is given.
+        ValueError: If the entered relative scale is not numeric.
+    """
     def ask_file(prompt_text, default=None):
+        """Prompt until the user supplies a file path.
+
+        Args:
+            prompt_text: Label shown before the input field.
+            default: Value used when the user submits an empty response.
+
+        Returns:
+            A nonempty path string.
+
+        Raises:
+            EOFError: If standard input closes while prompting.
+        """
         while True:
             p = input(f"{prompt_text}{' [' + default + ']' if default else ''}: ").strip() or (default or "")
             if p:
@@ -97,6 +177,20 @@ def prompt_if_missing(args):
     return args
 
 def build_video_chain(args, fps_overlay, fps_background):
+    """Build the ffmpeg picture-in-picture video filtergraph.
+
+    Args:
+        args: Parsed layout, sizing, interpolation, and frame-rate options.
+        fps_overlay: Detected overlay input frame rate.
+        fps_background: Detected background input frame rate.
+
+    Returns:
+        A tuple containing the filtergraph fragment and final video pad label.
+
+    Raises:
+        ValueError: If frame-rate or background-size values are invalid.
+        KeyError: If the selected corner is not in ``CORNER_CHOICES``.
+    """
     target_fps = float(args.target_fps) if args.target_fps else 30.0
     interp = args.interp
 
@@ -104,6 +198,8 @@ def build_video_chain(args, fps_overlay, fps_background):
     bg_steps = []
     bg_in = "[1:v]"
 
+    # Raise only low-frame-rate inputs; the final fps filter normalizes both
+    # streams after composition.
     if interp != "off" and fps_background > 0 and fps_background < target_fps:
         if interp == "minterpolate":
             bg_steps.append(f"{bg_in}minterpolate=fps={target_fps}[bg_i]")
@@ -111,6 +207,7 @@ def build_video_chain(args, fps_overlay, fps_background):
             bg_steps.append(f"{bg_in}fps={target_fps}[bg_i]")
         bg_in = "[bg_i]"
 
+    # Fill the canvas while preserving aspect ratio, then crop any overflow.
     w_bg, h_bg = map(int, args.bg_size.lower().split("x"))
     bg_steps.append(
         f"{bg_in}scale={w_bg}:{h_bg}:force_original_aspect_ratio=increase,"
@@ -156,6 +253,17 @@ def build_video_chain(args, fps_overlay, fps_background):
     return ";".join(bg_steps + overlay_steps + [overlay_filter, fps_normalize]), "[vout]"
 
 def build_audio_chain(overlay_has_audio, background_has_audio, added_silence, mix_duration):
+    """Build the ffmpeg audio-selection and mixing filtergraph.
+
+    Args:
+        overlay_has_audio: Whether input zero has an audio stream.
+        background_has_audio: Whether input one has an audio stream.
+        added_silence: Whether input two is an injected silent audio source.
+        mix_duration: ffmpeg ``amix`` duration policy.
+
+    Returns:
+        A filtergraph fragment producing the ``[aout]`` audio pad.
+    """
     audio_labels = []
 
     if overlay_has_audio:
@@ -167,9 +275,11 @@ def build_audio_chain(overlay_has_audio, background_has_audio, added_silence, mi
     if added_silence:
         audio_labels.append("[2:a]")
 
+    # Input two is the synthetic silence source when neither video has audio.
     if len(audio_labels) == 0:
         return "[2:a]anull[aout]"
 
+    # A single stream still gets asynchronous resampling for timestamp drift.
     if len(audio_labels) == 1:
         return f"{audio_labels[0]}aresample=async=1[aout]"
 
@@ -180,6 +290,14 @@ def build_audio_chain(overlay_has_audio, background_has_audio, added_silence, mi
     )
 
 def main():
+    """Parse options and run the picture-in-picture ffmpeg command.
+
+    Raises:
+        SystemExit: If dependencies or inputs are missing, or ffmpeg exits
+            unsuccessfully.
+        EOFError: If interactive input closes while required values are read.
+        ValueError: If an interactive or sizing value is invalid.
+    """
     parser = argparse.ArgumentParser(description="Overlay an OVERLAY video on a BACKGROUND video with audio mix and smooth frame pacing.")
     parser.add_argument("--overlay", "-i", help="Path to overlay picture-in-picture video.")
     parser.add_argument("--background", "-b", help="Path to background main video.")
@@ -224,6 +342,7 @@ def main():
     extra_inputs = []
     added_silence = False
 
+    # Always map an audio output. Inject silence when neither source supplies it.
     if not overlay_has_audio and not background_has_audio:
         extra_inputs = [
             "-f", "lavfi",
@@ -239,6 +358,7 @@ def main():
         args.mix_duration
     )
 
+    # Video and audio chains share one filter_complex graph and expose named pads.
     filtergraph = ";".join([v_chain, a_chain])
 
     cmd = [
@@ -257,6 +377,7 @@ def main():
         "-b:a", "192k",
     ]
 
+    # An infinite synthetic silence input must be bounded by the video duration.
     if args.shortest or added_silence:
         cmd.append("-shortest")
 
