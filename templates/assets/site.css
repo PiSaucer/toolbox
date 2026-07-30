@@ -4,23 +4,68 @@
   --toolbox-primary-soft: #eaf4fb;
   --toolbox-border: #d9e6ef;
   --toolbox-bg: #f5f8fb;
+  --toolbox-surface: #ffffff;
+  --toolbox-text: #17212b;
+  --toolbox-muted: #667482;
+  --toolbox-code: #122536;
   --bs-primary: var(--toolbox-primary);
   --bs-primary-rgb: 41, 128, 185;
   --bs-link-color: var(--toolbox-primary);
   --bs-link-hover-color: var(--toolbox-primary-dark);
 }
 
+[data-bs-theme="dark"] {
+  --toolbox-primary: #206894;
+  --toolbox-primary-dark: #2980b9;
+  --toolbox-primary-soft: #0d2533;
+  --toolbox-border: #282d31;
+  --toolbox-bg: #101214;
+  --toolbox-surface: #181b1e;
+  --toolbox-text: #e8f0f5;
+  --toolbox-muted: #9fb0bc;
+  --toolbox-code: #122536;
+  --bs-primary: var(--toolbox-primary);
+  --bs-primary-rgb: 32, 104, 148;
+  --bs-link-color: var(--toolbox-primary);
+  --bs-link-hover-color: var(--toolbox-primary-dark);
+  color-scheme: dark;
+}
+
 body {
-  background: linear-gradient(180deg, #ffffff 0%, var(--toolbox-bg) 42%, #ffffff 100%);
+  background: var(--toolbox-bg);
   min-height: 100vh;
-  color: #17212b;
+  color: var(--toolbox-text);
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+[data-bs-theme="dark"] body {
+  background: var(--toolbox-bg);
 }
 
 .navbar {
+  background-color: color-mix(in srgb, var(--toolbox-surface) 92%, transparent);
   backdrop-filter: saturate(180%) blur(14px);
   --bs-navbar-active-color: var(--toolbox-primary);
   --bs-navbar-hover-color: var(--toolbox-primary);
   position: relative;
+}
+
+.theme-picker .dropdown-item {
+  align-items: center;
+  display: flex;
+}
+
+.theme-picker .theme-check {
+  opacity: 0;
+}
+
+.theme-picker .dropdown-item.active {
+  background: var(--toolbox-primary-soft);
+  color: var(--toolbox-primary);
+}
+
+.theme-picker .dropdown-item.active .theme-check {
+  opacity: 1;
 }
 
 .github-corner {
@@ -40,6 +85,14 @@ body {
 
 .github-corner svg {
   fill: var(--toolbox-primary);
+}
+
+[data-bs-theme="dark"] .github-corner {
+  color: var(--toolbox-surface);
+}
+
+[data-bs-theme="dark"] .github-corner svg {
+  fill: #206894;
 }
 
 .github-corner .octo-arm {
@@ -78,7 +131,7 @@ body {
 }
 
 .footer-brand {
-  color: #17212b;
+  color: var(--toolbox-text);
   font-size: 1.1rem;
   font-weight: 700;
   text-decoration: none;
@@ -86,10 +139,25 @@ body {
 
 .hero,
 .detail-hero {
-  background: #fff;
+  background: var(--toolbox-surface);
   border: 1px solid var(--toolbox-border);
   border-radius: 1rem;
   box-shadow: 0 1rem 3rem rgba(23, 33, 43, 0.08);
+}
+
+.launcher-card {
+  background: var(--toolbox-surface);
+  overflow: hidden;
+}
+
+.launcher-card .download-tab-content pre {
+  min-height: 4.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.launcher-card .download-tab-content code {
+  white-space: pre;
 }
 
 .section-kicker {
@@ -146,7 +214,7 @@ body {
 }
 
 pre {
-  background: #122536;
+  background: var(--toolbox-code);
   color: #f4f8fb;
   overflow-x: auto;
 }
@@ -169,7 +237,7 @@ pre {
 }
 
 .download-tabs .nav-link.active {
-  border-color: var(--toolbox-border) var(--toolbox-border) #122536;
+  border-color: var(--toolbox-border) var(--toolbox-border) var(--toolbox-code);
   color: var(--toolbox-primary);
 }
 
@@ -186,14 +254,38 @@ pre {
 }
 
 .site-footer {
-  background: #fff;
+  background: var(--toolbox-surface);
   border-top: 1px solid var(--toolbox-border);
 }
 
 .footer-bottom {
   border-top: 1px solid var(--toolbox-border);
-  color: #667482;
+  color: var(--toolbox-muted);
   font-size: 0.875rem;
+}
+
+[data-bs-theme="dark"] .card,
+[data-bs-theme="dark"] .dropdown-menu {
+  background-color: var(--toolbox-surface);
+  box-shadow: 0 0.35rem 1.25rem rgba(0, 0, 0, 0.24) !important;
+}
+
+[data-bs-theme="dark"] .hero,
+[data-bs-theme="dark"] .detail-hero,
+[data-bs-theme="dark"] .launcher-card {
+  box-shadow: 0 0.5rem 1.75rem rgba(0, 0, 0, 0.28);
+}
+
+[data-bs-theme="dark"] .text-bg-light {
+  background-color: var(--toolbox-primary-soft) !important;
+  color: var(--toolbox-primary) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .script-card {
+    transition: none;
+  }
 }
 
 .black-code {

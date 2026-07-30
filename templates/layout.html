@@ -1,10 +1,24 @@
 <!doctype html>
-<html lang="en" data-bs-theme="light">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{title}}</title>
   <meta name="description" content="{{site_description}}">
+  <meta name="theme-color" content="#ffffff">
+  <script>
+    (() => {
+      const savedTheme = localStorage.getItem('toolbox-theme');
+      const theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'system';
+      const resolvedTheme = theme === 'system'
+        ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : theme;
+      document.documentElement.dataset.bsTheme = resolvedTheme;
+      document.documentElement.dataset.themePreference = theme;
+      document.querySelector('meta[name="theme-color"]').content =
+        resolvedTheme === 'dark' ? '#101214' : '#ffffff';
+    })();
+  </script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="{{base_path}}/assets/site.css">
@@ -21,7 +35,7 @@
   <link rel="manifest" href="{{base_path}}/assets/favicon/site.webmanifest" />
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+  <nav class="navbar navbar-expand-lg border-bottom sticky-top">
     <a href="{{repository_url}}" class="github-corner" aria-label="View source on GitHub">
       <svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true">
         <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z" />
@@ -38,9 +52,19 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="siteNav">
-        <div class="navbar-nav ms-auto gap-lg-2">
+        <div class="navbar-nav ms-auto gap-lg-2 align-items-lg-center">
           <a class="nav-link" href="{{base_path}}/manifest.json"><i class="bi bi-braces me-1" aria-hidden="true"></i>Manifest</a>
           <a class="nav-link" href="{{repository_url}}"><i class="bi bi-github me-1" aria-hidden="true"></i>GitHub</a>
+          <div class="dropdown theme-picker ms-lg-1">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" id="theme-menu-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose color theme">
+              <i class="bi bi-circle-half me-1" data-theme-icon aria-hidden="true"></i><span data-theme-label>System</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="theme-menu-button">
+              <li><button class="dropdown-item" type="button" data-theme-value="light"><i class="bi bi-sun me-2" aria-hidden="true"></i>Light<i class="bi bi-check-lg ms-auto theme-check" aria-hidden="true"></i></button></li>
+              <li><button class="dropdown-item" type="button" data-theme-value="dark"><i class="bi bi-moon-stars me-2" aria-hidden="true"></i>Dark<i class="bi bi-check-lg ms-auto theme-check" aria-hidden="true"></i></button></li>
+              <li><button class="dropdown-item" type="button" data-theme-value="system"><i class="bi bi-circle-half me-2" aria-hidden="true"></i>System<i class="bi bi-check-lg ms-auto theme-check" aria-hidden="true"></i></button></li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -72,7 +96,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
   <script src="https://unpkg.com/@highlightjs/cdn-assets@11.5.1/languages/powershell.min.js"></script>
-  <script src="{{base_path}}/assets/site.js"></script>
+  <script src="{{base_path}}/assets/site.js?v=3"></script>
   <script>hljs.highlightAll();</script>
 <!--
  _              _ _               

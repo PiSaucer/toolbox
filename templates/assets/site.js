@@ -1,3 +1,71 @@
+const themeStorageKey = 'toolbox-theme';
+const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+const themeOptions = Array.from(document.querySelectorAll('[data-theme-value]'));
+const themeLabel = document.querySelector('[data-theme-label]');
+const themeIcon = document.querySelector('[data-theme-icon]');
+const themeMeta = document.querySelector('meta[name="theme-color"]');
+
+const getThemePreference = () => {
+  const savedTheme = localStorage.getItem(themeStorageKey);
+  return savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'system';
+};
+
+const applyTheme = (preference) => {
+  const resolvedTheme = preference === 'system'
+    ? (systemTheme.matches ? 'dark' : 'light')
+    : preference;
+  const labels = { light: 'Light', dark: 'Dark', system: 'System' };
+  const icons = { light: 'bi-sun', dark: 'bi-moon-stars', system: 'bi-circle-half' };
+
+  document.documentElement.dataset.bsTheme = resolvedTheme;
+  document.documentElement.dataset.themePreference = preference;
+  if (themeLabel) themeLabel.textContent = labels[preference];
+  if (themeIcon) themeIcon.className = `bi ${icons[preference]} me-1`;
+  if (themeMeta) themeMeta.content = resolvedTheme === 'dark' ? '#101214' : '#ffffff';
+
+  for (const option of themeOptions) {
+    const isActive = option.dataset.themeValue === preference;
+    option.classList.toggle('active', isActive);
+    option.setAttribute('aria-pressed', String(isActive));
+  }
+};
+
+for (const option of themeOptions) {
+  option.addEventListener('click', () => {
+    const preference = option.dataset.themeValue;
+    if (preference === 'system') {
+      localStorage.removeItem(themeStorageKey);
+    } else {
+      localStorage.setItem(themeStorageKey, preference);
+    }
+    applyTheme(preference);
+  });
+}
+
+systemTheme.addEventListener('change', () => {
+  if (getThemePreference() === 'system') applyTheme('system');
+});
+
+applyTheme(getThemePreference());
+
+const detectedOsBadge = document.querySelector('[data-detected-os]');
+const osName = (() => {
+  const userAgentDataPlatform = navigator.userAgentData && navigator.userAgentData.platform
+    ? navigator.userAgentData.platform
+    : '';
+  const platform = `${userAgentDataPlatform} ${navigator.platform || ''} ${navigator.userAgent || ''}`.toLowerCase();
+  if (platform.includes('win')) return 'windows';
+  if (platform.includes('mac')) return 'macos';
+  if (platform.includes('linux') || platform.includes('x11')) return 'linux';
+  return '';
+})();
+const osLabels = { macos: 'macOS detected', linux: 'Linux detected', windows: 'Windows detected' };
+const detectedOsTab = osName ? document.querySelector(`[data-os-tab="${osName}"]`) : null;
+if (detectedOsBadge) detectedOsBadge.textContent = osLabels[osName] || 'Choose your OS';
+if (detectedOsTab && window.bootstrap && window.bootstrap.Tab) {
+  window.bootstrap.Tab.getOrCreateInstance(detectedOsTab).show();
+}
+
 const dataEl = document.getElementById('script-data');
 const searchEl = document.getElementById('search');
 const tagEl = document.getElementById('tag-filter');
@@ -54,10 +122,11 @@ for (const button of copyButtons) {
   });
 }
 
-const activeTabCopyButton = document.querySelector('[data-copy-active-tab]');
-if (activeTabCopyButton) {
+const activeTabCopyButtons = Array.from(document.querySelectorAll('[data-copy-active-tab]'));
+for (const activeTabCopyButton of activeTabCopyButtons) {
   activeTabCopyButton.addEventListener('click', async () => {
-    const activeTab = document.querySelector('#downloadTabs .nav-link.active');
+    const tabListSelector = activeTabCopyButton.dataset.tabList || '#downloadTabs';
+    const activeTab = document.querySelector(`${tabListSelector} .nav-link.active`);
     if (!activeTab) return;
     const target = activeTab.getAttribute('data-bs-target');
     if (!target) return;
