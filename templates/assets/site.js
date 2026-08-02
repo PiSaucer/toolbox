@@ -66,6 +66,29 @@ if (detectedOsTab && window.bootstrap && window.bootstrap.Tab) {
   window.bootstrap.Tab.getOrCreateInstance(detectedOsTab).show();
 }
 
+const installerDownload = document.querySelector('[data-installer-download]');
+if (installerDownload && osName) {
+  const title = installerDownload.querySelector('[data-installer-download-title]');
+  const detail = installerDownload.querySelector('[data-installer-download-detail]');
+  const icon = installerDownload.querySelector('[data-installer-download-icon]');
+
+  if (osName === 'windows') {
+    if (title) title.textContent = 'Download Installer';
+    if (detail) detail.textContent = 'PowerShell | Coming soon';
+    if (icon) icon.className = 'bi bi-clock-history fs-4';
+    installerDownload.removeAttribute('href');
+    installerDownload.removeAttribute('download');
+    installerDownload.classList.add('disabled');
+    installerDownload.setAttribute('aria-disabled', 'true');
+    installerDownload.setAttribute('aria-label', 'Windows PowerShell installer is not available yet');
+  } else {
+    const platformLabel = osName === 'macos' ? 'MacOS' : 'Linux';
+    if (title) title.textContent = 'Download Installer';
+    if (detail) detail.textContent = `install.sh | ${platformLabel}`;
+    installerDownload.setAttribute('aria-label', `Download the ${platformLabel} shell installer, install.sh`);
+  }
+}
+
 const dataEl = document.getElementById('script-data');
 const searchEl = document.getElementById('search');
 const tagEl = document.getElementById('tag-filter');

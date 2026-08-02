@@ -331,9 +331,7 @@ def render_script_page(config: dict[str, Any], script: dict[str, Any]) -> str:
             "sha256": escaped(script["sha256"]),
             "source_url": escaped(script["source_url"]),
             "tags": render_badges(script.get("tags", [])),
-            "launcher_command": escaped(
-                f'python3 <(curl -fsSL {config["base_url"]}/toolbox.py) {script["id"]}'
-            ),
+            "launcher_command": escaped(f'toolbox {script["id"]}'),
             "curl_command": escaped(f'curl -fsSL "{download_url}" -o "{filename}"'),
             "wget_command": escaped(f'wget -O "{filename}" "{download_url}"'),
             "powershell_command": escaped(f'Invoke-WebRequest -Uri "{download_url}" -OutFile "{filename}"'),

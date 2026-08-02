@@ -160,6 +160,10 @@ body {
   white-space: pre;
 }
 
+.launcher-card p code {
+  color: var(--toolbox-primary);
+}
+
 .section-kicker {
   color: var(--toolbox-primary);
   font-size: 0.78rem;

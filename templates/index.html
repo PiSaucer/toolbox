@@ -19,8 +19,11 @@
             <h2 class="h3 mb-2 fw-bold" id="run-heading"><i class="bi bi-lightning-charge me-2" aria-hidden="true"></i>Run without installing</h2>
             <p class="text-secondary mb-0">Open the interactive script browser immediately without changing your PATH or shell configuration.</p>
           </div>
-          <a class="btn btn-outline-primary flex-shrink-0" href="{{launcher_url}}" download="toolbox.py">
-            <i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>Download toolbox.py
+          <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2 flex-shrink-0 text-start" href="{{launcher_url}}" download="toolbox.py" aria-label="Download toolbox.py for all platforms">
+            <i class="bi bi-file-earmark-arrow-down fs-4" aria-hidden="true"></i>
+            <span>
+              <span class="d-block fw-semibold lh-sm">Download toolbox.py</span>
+            </span>
           </a>
         </div>
 
@@ -43,7 +46,7 @@
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="run-python-tab" data-bs-toggle="tab" data-bs-target="#run-python-panel" type="button" role="tab" aria-controls="run-python-panel" aria-selected="false">
-                <i class="bi bi-filetype-py me-1" aria-hidden="true"></i>Python
+                <i class="fa-brands fa-python me-1" aria-hidden="true"></i>Python
               </button>
             </li>
           </ul>
@@ -72,14 +75,18 @@
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-start gap-3 mb-4">
           <div>
             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-              <h2 class="h3 mb-0 fw-bold" id="installer-heading"><i class="bi bi-box-arrow-in-down me-2" aria-hidden="true"></i>Install the launcher</h2>
+              <h2 class="h3 mb-0 fw-bold" id="installer-heading"><i class="bi bi-tools me-2" aria-hidden="true"></i>Install the launcher</h2>
               <span class="badge text-bg-primary" data-detected-os>Choose your OS</span>
             </div>
             <p class="text-secondary mb-0">Add a permanent <code>toolbox</code> command with automatic PATH setup and tab completion for your shell.</p>
           </div>
           <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-outline-primary flex-shrink-0" href="{{install_sh_url}}" download="install.sh">
-              <i class="bi bi-apple me-2" aria-hidden="true"></i>macOS / Linux
+            <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2 flex-shrink-0 text-start" href="{{install_sh_url}}" download="install.sh" aria-label="Download the macOS and Linux shell installer, install.sh" data-installer-download>
+              <i class="bi bi-file-earmark-arrow-down fs-4" aria-hidden="true" data-installer-download-icon></i>
+              <span>
+                <span class="d-block fw-semibold lh-sm" data-installer-download-title>Download Installer</span>
+                <small class="d-block opacity-75 lh-sm" data-installer-download-detail>install.sh | MacOS &amp; Linux</small>
+              </span>
             </a>
             <!-- <a class="btn btn-outline-primary flex-shrink-0" href="{{install_ps1_url}}" download="install.ps1">
               <i class="bi bi-windows me-2" aria-hidden="true"></i>Windows
@@ -90,10 +97,13 @@
         <div class="d-flex align-items-end justify-content-between gap-2 download-tabs-row">
           <ul class="nav nav-tabs download-tabs" id="installerTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="installer-macos-tab" data-bs-toggle="tab" data-bs-target="#installer-macos-panel" data-os-tab="macos" type="button" role="tab" aria-controls="installer-macos-panel" aria-selected="true"><i class="bi bi-apple me-1" aria-hidden="true"></i>macOS</button>
+              <button class="nav-link active" id="installer-macos-tab" data-bs-toggle="tab" data-bs-target="#installer-macos-panel" data-os-tab="macos" type="button" role="tab" aria-controls="installer-macos-panel" aria-selected="true"><i class="fa-solid fa-beer-mug-empty me-1" aria-hidden="true"></i>brew</button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="installer-linux-tab" data-bs-toggle="tab" data-bs-target="#installer-linux-panel" data-os-tab="linux" type="button" role="tab" aria-controls="installer-linux-panel" aria-selected="false"><i class="bi bi-ubuntu me-1" aria-hidden="true"></i>Linux</button>
+              <button class="nav-link" id="installer-linux-tab" data-bs-toggle="tab" data-bs-target="#installer-linux-panel" data-os-tab="linux" type="button" role="tab" aria-controls="installer-linux-panel" aria-selected="false"><i class="bi bi-terminal me-1" aria-hidden="true"></i>bash</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="installer-pip-tab" data-bs-toggle="tab" data-bs-target="#installer-pip-panel" type="button" role="tab" aria-controls="installer-pip-panel" aria-selected="false"><i class="fa-brands fa-python me-1" aria-hidden="true"></i>pip</button>
             </li>
             <li class="nav-item" role="presentation">
               <!-- <button class="nav-link" id="installer-windows-tab" data-bs-toggle="tab" data-bs-target="#installer-windows-panel" data-os-tab="windows" type="button" role="tab" aria-controls="installer-windows-panel" aria-selected="false"><i class="bi bi-windows me-1" aria-hidden="true"></i>PowerShell</button> -->
@@ -108,6 +118,9 @@
           </div>
           <div class="tab-pane fade" id="installer-linux-panel" role="tabpanel" aria-labelledby="installer-linux-tab" tabindex="0">
             <pre class="p-3 mb-0"><code class="language-bash">curl -fsSL {{install_sh_url}} | sh</code></pre>
+          </div>
+          <div class="tab-pane fade" id="installer-pip-panel" role="tabpanel" aria-labelledby="installer-pip-tab" tabindex="0">
+            <pre class="p-3 mb-0"><code class="language-bash">pip install pisaucer-toolbox</code></pre>
           </div>
           <div class="tab-pane fade" id="installer-windows-panel" role="tabpanel" aria-labelledby="installer-windows-tab" tabindex="0">
             <pre class="p-3 mb-0"><code class="language-powershell">irm {{install_ps1_url}} | iex</code></pre>
