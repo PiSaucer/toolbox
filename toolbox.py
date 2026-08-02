@@ -24,7 +24,7 @@ from urllib.parse import unquote, urlparse
 from rich.console import Console
 from rich.text import Text
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 DEFAULT_URL = "https://pisaucer.github.io/toolbox/manifest.json"
 SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 TOOLBOX_ART = [
@@ -42,6 +42,58 @@ ANSI_CYAN = "\033[36m"
 ANSI_YELLOW = "\033[33m"
 console = Console(highlight=False)
 error_console = Console(stderr=True, highlight=False)
+
+def installation_source(module_path: Path | None = None) -> str:
+    """Describe how the running copy of toolbox was installed.
+
+    The project is also distributed as a single Python file, so package
+    metadata is not always available.  Use the locations chosen by each
+    supported installer and fall back to a standalone download.
+
+    Args:
+        module_path: Path to inspect. ``None`` uses the running module's path.
+
+    Returns:
+        A short description of the detected installation source.
+    """
+    path = (module_path or Path(__file__)).expanduser().resolve()
+    normalized = path.as_posix().lower()
+
+    if "/cellar/toolbox/" in normalized or "/homebrew/cellar/toolbox/" in normalized:
+        return "Homebrew"
+    if "/pipx/venvs/" in normalized:
+        return "pipx (PyPI)"
+    if "/uv/tools/" in normalized or "/uv/tool/" in normalized:
+        return "uv tool (PyPI)"
+    if "/site-packages/" in normalized or "/dist-packages/" in normalized:
+        return "pip (PyPI)"
+
+    home = Path.home().expanduser().resolve()
+    if path == home / ".local" / "bin" / "toolbox":
+        return "install.sh download"
+    if normalized.endswith("/programs/toolbox/toolbox.py"):
+        return "install.ps1 download"
+    if any((parent / ".git").is_dir() for parent in path.parents):
+        return "source checkout"
+    return "standalone download"
+
+def version_text(
+    program: str = "toolbox",
+    module_path: Path | None = None,
+) -> str:
+    """Build version output with installation source and location.
+
+    Args:
+        program: Command name displayed before the version number.
+        module_path: Installed module path. ``None`` uses the running module's
+            path.
+
+    Returns:
+        Version text containing the install source and resolved location.
+    """
+    path = (module_path or Path(__file__)).expanduser().resolve()
+    source = installation_source(path)
+    return f"{program} {__version__}\nsource: {source}\nlocation: {path}"
 
 def fetch_manifest(url: str) -> dict[str, Any]:
     """Fetch and validate a JSON manifest.
@@ -1178,12 +1230,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         prog="toolbox",
-        description="Select and securely download a script from the toolbox manifest."
+        description="Select and securely download a script from the toolbox manifest.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {__version__}",
+        version=version_text("%(prog)s"),
     )
     parser.add_argument(
         "--completion-script-ids",
