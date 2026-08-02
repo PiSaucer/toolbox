@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pisaucer-toolbox"
+dynamic = ["version"]
+description = "Browse, download, verify, and run utility scripts"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "PiSaucer" },
+]
+keywords = ["cli", "toolbox", "utilities", "scripts"]
+dependencies = [
+  "rich>=13.9,<15",
+  "windows-curses>=2.4; sys_platform == 'win32'",
+]
+
+[project.urls]
+Homepage = "https://pisaucer.github.io/toolbox/"
+Repository = "https://github.com/PiSaucer/toolbox"
+Issues = "https://github.com/PiSaucer/toolbox/issues"
+
+[project.scripts]
+toolbox = "toolbox:main"
+
+[tool.setuptools]
+py-modules = ["toolbox"]
+
+[tool.setuptools.dynamic]
+version = { attr = "toolbox.__version__" }
