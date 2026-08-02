@@ -24,7 +24,7 @@ from urllib.parse import unquote, urlparse
 from rich.console import Console
 from rich.text import Text
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 DEFAULT_URL = "https://pisaucer.github.io/toolbox/manifest.json"
 SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 TOOLBOX_ART = [
