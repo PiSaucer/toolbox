@@ -19,6 +19,7 @@ SITE_DIR = ROOT / "site"
 TEMPLATE_DIR = ROOT / "templates"
 CONFIG_PATH = ROOT / "toolbox.json"
 SCHEMA_PATH = ROOT / "schema" / "script.schema.json"
+STATIC_ROOT_FILES = ("googlefc5805ece4ad27c6.html",)
 
 @dataclass(frozen=True)
 class MetadataSchema:
@@ -369,6 +370,8 @@ def generate(config: dict[str, Any], scripts: list[dict[str, Any]]) -> None:
     # shutil.copy2(ROOT / "install.ps1", SITE_DIR / "install.ps1")
     shutil.copy2(ROOT / "uninstall.sh", SITE_DIR / "uninstall.sh")
     # shutil.copy2(ROOT / "uninstall.ps1", SITE_DIR / "uninstall.ps1")
+    for filename in STATIC_ROOT_FILES:
+        shutil.copy2(ROOT / filename, SITE_DIR / filename)
     write_text(SITE_DIR / "index.html", render_index(config, scripts))
     write_text(SITE_DIR / "manifest.json", json.dumps({"scripts": minimal_manifest(scripts)}, indent=None, sort_keys=True) + "\n")
     for script in scripts:
@@ -390,6 +393,9 @@ def main() -> int:
         for installer in ("install.sh",):
             if not (ROOT / installer).is_file():
                 fail(f"missing installer: {ROOT / installer}")
+        for filename in STATIC_ROOT_FILES:
+            if not (ROOT / filename).is_file():
+                fail(f"missing static root file: {ROOT / filename}")
         if not args.check:
             generate(config, scripts)
     except ValueError as exc:
