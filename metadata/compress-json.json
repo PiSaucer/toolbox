@@ -14,8 +14,8 @@
   "requirements": ["jq"],
   "tags": ["JSON", "Compression", "Minify", "jq"],
   "usage": [
-    "sh ./scripts/compress-json.sh --input data.json --output min",
-    "sh ./scripts/compress-json.sh -f ./data -o ./min",
-    "sh ./scripts/compress-json.sh --input=./data --output=./build/min"
+    "./scripts/compress-json.sh --input data.json --output min",
+    "./scripts/compress-json.sh -f ./data -o ./min",
+    "./scripts/compress-json.sh --input=./data --output=./build/min"
   ]
 }
