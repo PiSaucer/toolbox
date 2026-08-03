@@ -23,7 +23,7 @@ SITE_DIR = ROOT / "site"
 TEMPLATE_DIR = ROOT / "templates"
 CONFIG_PATH = ROOT / "toolbox.json"
 SCHEMA_PATH = ROOT / "schema" / "script.schema.json"
-STATIC_ROOT_FILES = ("googlefc5805ece4ad27c6.html",)
+STATIC_ROOT_FILES = ("googlefc5805ece4ad27c6.html", "robots.txt")
 
 @dataclass(frozen=True)
 class MetadataSchema:
