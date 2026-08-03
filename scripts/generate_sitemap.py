@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# generate-sitemap.py
+# generate_sitemap.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.0.0
+# Version 1.1.0
 
 # Generate a sitemap.xml file from HTML files below a website root.
-# Usage: python3 generate-sitemap.py --root SITE_DIR --base-url https://example.com/
+# Usage: python3 generate_sitemap.py --root SITE_DIR --base-url https://example.com/
 
 import argparse
 import sys
@@ -33,7 +33,7 @@ def find_html_files(root: Path) -> list[Path]:
         key=lambda path: path.relative_to(root).as_posix().lower(),
     )
 
-def build_url(base_url: str, root: Path, file_path: Path) -> str:
+def build_url(base_url: str, root: Path, file_path: Path, pretty_urls: bool = False) -> str:
     """Build the public URL for a file below the website root.
 
     Args:
@@ -48,6 +48,8 @@ def build_url(base_url: str, root: Path, file_path: Path) -> str:
         ValueError: If ``file_path`` is not below ``root``.
     """
     relative_path = file_path.relative_to(root).as_posix()
+    if pretty_urls and relative_path.lower().endswith("index.html"):
+        relative_path = relative_path[:-len("index.html")]
     
     # Preserve path separators while escaping spaces and other unsafe characters.
     encoded_path = quote(relative_path, safe="/")
@@ -121,6 +123,33 @@ def validate_base_url(base_url: str) -> str:
     encoded_path = quote(parsed.path, safe="/%:@")
     return parsed._replace(path=encoded_path).geturl()
 
+
+def generate_sitemap(
+    root: Path,
+    base_url: str,
+    output: Path | None = None,
+    exclude: list[str] | None = None,
+    pretty_urls: bool = False,
+) -> int:
+    """Generate a sitemap and return the number of URLs written."""
+    root = root.expanduser().resolve()
+    if not root.is_dir():
+        raise ValueError(f"root directory not found: {root}")
+
+    normalized_base_url = validate_base_url(base_url)
+    destination = output.expanduser().resolve() if output else root / "sitemap.xml"
+    excluded_patterns = exclude or []
+    html_files = [
+        path for path in find_html_files(root)
+        if not any(path.relative_to(root).match(pattern) for pattern in excluded_patterns)
+    ]
+    entries = [
+        (build_url(normalized_base_url, root, path, pretty_urls), format_last_modified(path))
+        for path in html_files
+    ]
+    write_sitemap(entries, destination)
+    return len(entries)
+
 def parse_args() -> argparse.Namespace:
     """Parse command-line options.
 
@@ -150,6 +179,18 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Output path (default: ROOT/sitemap.xml)",
     )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        metavar="GLOB",
+        help="Exclude relative paths matching this glob (repeatable)",
+    )
+    parser.add_argument(
+        "--pretty-urls",
+        action="store_true",
+        help="Write directory URLs instead of URLs ending in index.html",
+    )
     return parser.parse_args()
 
 def main() -> int:
@@ -159,31 +200,21 @@ def main() -> int:
         Zero on success or one when validation, scanning, or writing fails.
     """
     args = parse_args()
-    root = args.root.expanduser().resolve()
-
-    if not root.is_dir():
-        print(f"Error: root directory not found: {root}", file=sys.stderr)
-        return 1
-
     try:
-        base_url = validate_base_url(args.base_url)
-        # Resolve an explicit destination independently of the scanned root.
-        output = (
-            args.output.expanduser().resolve()
-            if args.output
-            else root / "sitemap.xml"
+        root = args.root.expanduser().resolve()
+        output = args.output.expanduser().resolve() if args.output else root / "sitemap.xml"
+        entry_count = generate_sitemap(
+            root=root,
+            base_url=args.base_url,
+            output=output,
+            exclude=args.exclude,
+            pretty_urls=args.pretty_urls,
         )
-        html_files = find_html_files(root)
-        entries = [
-            (build_url(base_url, root, path), format_last_modified(path))
-            for path in html_files
-        ]
-        write_sitemap(entries, output)
     except (OSError, ValueError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    print(f"Wrote {output} ({len(entries)} URLs)")
+    print(f"Wrote {output} ({entry_count} URLs)")
     return 0
 
 if __name__ == "__main__":
