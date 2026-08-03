@@ -1,7 +1,17 @@
 {
   "site_title": "toolbox",
   "site_description": "My personal toolbox of utility scripts",
+  "site_author": "PiSaucer",
+  "site_language": "en",
   "base_url": "https://pisaucer.github.io/toolbox",
   "repository": "PiSaucer/toolbox",
-  "branch": "main"
+  "branch": "main",
+  "sitemap": {
+    "enabled": true,
+    "output": "sitemap.xml",
+    "pretty_urls": true,
+    "exclude": [
+      "google*.html"
+    ]
+  }
 }

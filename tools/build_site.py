@@ -10,10 +10,14 @@ import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.generate_sitemap import generate_sitemap as write_sitemap
+
 METADATA_DIR = ROOT / "metadata"
 SITE_DIR = ROOT / "site"
 TEMPLATE_DIR = ROOT / "templates"
@@ -30,7 +34,7 @@ class MetadataSchema:
     def allowed_fields(self) -> set[str]:
         return set(self.properties)
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     raise ValueError(message)
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -132,6 +136,31 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
             fail(f"{CONFIG_PATH}: {field} must be a non-empty string")
 
     parsed = urlparse(config["base_url"])
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        fail(f"{CONFIG_PATH}: base_url must be an absolute HTTP or HTTPS URL")
+
+    for field in ("site_author", "site_language"):
+        if not isinstance(config.get(field), str) or not config[field].strip():
+            fail(f"{CONFIG_PATH}: {field} must be a non-empty string")
+
+    sitemap = config.get("sitemap")
+    if not isinstance(sitemap, dict):
+        fail(f"{CONFIG_PATH}: sitemap must be an object")
+    if not isinstance(sitemap.get("enabled"), bool):
+        fail(f"{CONFIG_PATH}: sitemap.enabled must be a boolean")
+    if not isinstance(sitemap.get("output"), str) or not sitemap["output"].strip():
+        fail(f"{CONFIG_PATH}: sitemap.output must be a non-empty string")
+    if not isinstance(sitemap.get("pretty_urls"), bool):
+        fail(f"{CONFIG_PATH}: sitemap.pretty_urls must be a boolean")
+    sitemap_exclude = sitemap.get("exclude")
+    if not isinstance(sitemap_exclude, list) or not all(
+        isinstance(pattern, str) and pattern.strip() for pattern in sitemap_exclude
+    ):
+        fail(f"{CONFIG_PATH}: sitemap.exclude must be an array of non-empty strings")
+    sitemap_output = Path(sitemap["output"])
+    if sitemap_output.is_absolute() or ".." in sitemap_output.parts:
+        fail(f"{CONFIG_PATH}: sitemap.output must stay inside site/")
+
     base_path = parsed.path.rstrip("/") or ""
     repository = config["repository"].strip("/")
     return {
@@ -248,7 +277,13 @@ def minimal_manifest(scripts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{key: script[key] for key in keys if key in script} for script in scripts]
 
 
-def render_layout(config: dict[str, Any], title: str, content: str, script_data: list[dict[str, Any]] | None = None) -> str:
+def render_layout(
+    config: dict[str, Any],
+    title: str,
+    content: str,
+    canonical_url: str,
+    script_data: list[dict[str, Any]] | None = None,
+) -> str:
     data = ""
     if script_data is not None:
         safe_json = html.escape(json.dumps(script_data, sort_keys=True), quote=False)
@@ -259,6 +294,9 @@ def render_layout(config: dict[str, Any], title: str, content: str, script_data:
             "title": escaped(title),
             "site_title": escaped(config["site_title"]),
             "site_description": escaped(config["site_description"]),
+            "site_author": escaped(config["site_author"]),
+            "site_language": escaped(config["site_language"]),
+            "canonical_url": escaped(canonical_url),
             "base_path": escaped(config["base_path"]),
             "repository_url": escaped(config["repository_url"]),
             "content": content,
@@ -306,7 +344,7 @@ def render_index(config: dict[str, Any], scripts: list[dict[str, Any]]) -> str:
             "cards": "\n".join(cards),
         },
     )
-    return render_layout(config, config["site_title"], content, minimal_manifest(scripts))
+    return render_layout(config, config["site_title"], content, f"{config['base_url']}/", minimal_manifest(scripts))
 
 
 def render_script_page(config: dict[str, Any], script: dict[str, Any]) -> str:
@@ -328,6 +366,7 @@ def render_script_page(config: dict[str, Any], script: dict[str, Any]) -> str:
             "platforms": platforms,
             "script_language": escaped(script_language),
             "usage": escaped("\n".join(script["usage"])),
+            "desktop_download_url": escaped(f'toolbox://download/{script["id"]}'),
             "download_url": escaped(download_url),
             "sha256": escaped(script["sha256"]),
             "source_url": escaped(script["source_url"]),
@@ -343,7 +382,12 @@ def render_script_page(config: dict[str, Any], script: dict[str, Any]) -> str:
             "script_content": escaped(script["script_content"]),
         },
     )
-    return render_layout(config, f"{script['name']} | {config['site_title']}", content)
+    return render_layout(
+        config,
+        f"{script['name']} | {config['site_title']}",
+        content,
+        script["page_url"],
+    )
 
 
 def write_text(path: Path, content: str) -> None:
@@ -357,6 +401,23 @@ def copy_assets() -> None:
     if not source.is_dir():
         fail(f"missing template assets directory: {source}")
     shutil.copytree(source, target)
+
+
+def generate_sitemap(config: dict[str, Any]) -> None:
+    sitemap = config["sitemap"]
+    if not sitemap["enabled"]:
+        return
+    output = SITE_DIR / sitemap["output"]
+    try:
+        write_sitemap(
+            root=SITE_DIR,
+            base_url=f"{config['base_url']}/",
+            output=output,
+            exclude=sitemap["exclude"],
+            pretty_urls=sitemap["pretty_urls"],
+        )
+    except (OSError, ValueError) as exc:
+        fail(f"sitemap generation failed: {exc}")
 
 
 def generate(config: dict[str, Any], scripts: list[dict[str, Any]]) -> None:
@@ -376,6 +437,7 @@ def generate(config: dict[str, Any], scripts: list[dict[str, Any]]) -> None:
     write_text(SITE_DIR / "manifest.json", json.dumps({"scripts": minimal_manifest(scripts)}, indent=None, sort_keys=True) + "\n")
     for script in scripts:
         write_text(SITE_DIR / "scripts" / script["id"] / "index.html", render_script_page(config, script))
+    generate_sitemap(config)
 
 
 def main() -> int:
