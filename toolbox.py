@@ -11,6 +11,7 @@ import curses
 import hashlib
 import json
 import os
+import platform
 import re
 import shlex
 import subprocess
@@ -24,7 +25,7 @@ from urllib.parse import unquote, urlparse
 from rich.console import Console
 from rich.text import Text
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 DEFAULT_URL = "https://pisaucer.github.io/toolbox/manifest.json"
 SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 TOOLBOX_ART = [
@@ -69,6 +70,8 @@ def installation_source(module_path: Path | None = None) -> str:
         return "pip (PyPI)"
 
     home = Path.home().expanduser().resolve()
+    if path == home / "Library" / "Application Support" / "toolbox" / "toolbox.py":
+        return "Toolbox Desktop"
     if path == home / ".local" / "bin" / "toolbox":
         return "install.sh download"
     if normalized.endswith("/programs/toolbox/toolbox.py"):
@@ -93,7 +96,12 @@ def version_text(
     """
     path = (module_path or Path(__file__)).expanduser().resolve()
     source = installation_source(path)
-    return f"{program} {__version__}\nsource: {source}\nlocation: {path}"
+    return (
+        f"{program} {__version__}\n"
+        f"python: {platform.python_version()}\n"
+        f"source: {source}\n"
+        f"location: {path}"
+    )
 
 def fetch_manifest(url: str) -> dict[str, Any]:
     """Fetch and validate a JSON manifest.
