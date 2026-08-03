@@ -5,6 +5,7 @@ import argparse
 import http.server
 import json
 import posixpath
+import socket
 import subprocess
 import sys
 import threading
@@ -43,6 +44,18 @@ def load_base_path() -> str:
     config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     parsed = urlparse(config["base_url"])
     return parsed.path.rstrip("/") or ""
+
+def local_network_ip() -> str | None:
+    """Return the preferred local IPv4 address without sending network traffic."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("192.0.2.1", 80))
+        address = probe.getsockname()[0]
+    except OSError:
+        return None
+    finally:
+        probe.close()
+    return address if not address.startswith("127.") else None
 
 def build_site() -> None:
     subprocess.run([sys.executable, str(BUILD_SCRIPT)], cwd=ROOT, check=True)
@@ -212,7 +225,11 @@ def make_handler(base_path: str, state: DevState, interval_ms: int) -> type[http
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", default="127.0.0.1", help="host to bind; default: 127.0.0.1")
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="host to bind; default: 0.0.0.0 (all network interfaces)",
+    )
     parser.add_argument("--port", type=int, default=8000, help="port to bind; default: 8000")
     parser.add_argument("--no-build", action="store_true", help="serve the current site/ folder without rebuilding first")
     parser.add_argument("--no-watch", action="store_true", help="disable source file watching and browser reload")
@@ -241,7 +258,14 @@ def main() -> int:
     handler = make_handler(base_path, state, args.reload_interval)
     server = http.server.ThreadingHTTPServer((args.host, args.port), handler)
     url_path = f"{base_path}/" if base_path else "/"
-    print(f"Serving {SITE_DIR} at http://{args.host}:{args.port}{url_path}")
+    if args.host == "0.0.0.0":
+        print(f"Serving {SITE_DIR} on all network interfaces:")
+        print(f"  Local:   http://127.0.0.1:{args.port}{url_path}")
+        network_ip = local_network_ip()
+        if network_ip:
+            print(f"  Network: http://{network_ip}:{args.port}{url_path}")
+    else:
+        print(f"Serving {SITE_DIR} at http://{args.host}:{args.port}{url_path}")
     if args.no_watch:
         print("Watching disabled.")
     else:
