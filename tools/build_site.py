@@ -131,7 +131,7 @@ def validate_metadata(path: Path, item: dict[str, Any], schema: MetadataSchema) 
         fail(f"{path}: entry must match the filename in path")
 
 def validate_config(config: dict[str, Any]) -> dict[str, Any]:
-    for field in ("site_title", "site_description", "base_url", "repository", "branch"):
+    for field in ("site_title", "site_description", "site_long_description", "base_url", "repository", "branch"):
         if not isinstance(config.get(field), str) or not config[field].strip():
             fail(f"{CONFIG_PATH}: {field} must be a non-empty string")
 
@@ -150,6 +150,8 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         fail(f"{CONFIG_PATH}: sitemap.enabled must be a boolean")
     if not isinstance(sitemap.get("output"), str) or not sitemap["output"].strip():
         fail(f"{CONFIG_PATH}: sitemap.output must be a non-empty string")
+    if not isinstance(sitemap.get("text_output"), str) or not sitemap["text_output"].strip():
+        fail(f"{CONFIG_PATH}: sitemap.text_output must be a non-empty string")
     if not isinstance(sitemap.get("pretty_urls"), bool):
         fail(f"{CONFIG_PATH}: sitemap.pretty_urls must be a boolean")
     sitemap_exclude = sitemap.get("exclude")
@@ -160,6 +162,9 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
     sitemap_output = Path(sitemap["output"])
     if sitemap_output.is_absolute() or ".." in sitemap_output.parts:
         fail(f"{CONFIG_PATH}: sitemap.output must stay inside site/")
+    sitemap_text_output = Path(sitemap["text_output"])
+    if sitemap_text_output.is_absolute() or ".." in sitemap_text_output.parts:
+        fail(f"{CONFIG_PATH}: sitemap.text_output must stay inside site/")
 
     base_path = parsed.path.rstrip("/") or ""
     repository = config["repository"].strip("/")
@@ -283,6 +288,7 @@ def render_layout(
     content: str,
     canonical_url: str,
     script_data: list[dict[str, Any]] | None = None,
+    page_description: str | None = None,
 ) -> str:
     data = ""
     if script_data is not None:
@@ -294,9 +300,13 @@ def render_layout(
             "title": escaped(title),
             "site_title": escaped(config["site_title"]),
             "site_description": escaped(config["site_description"]),
+            "site_long_description": escaped(config["site_long_description"]),
+            "page_description": escaped(page_description or config["site_long_description"]),
             "site_author": escaped(config["site_author"]),
             "site_language": escaped(config["site_language"]),
             "canonical_url": escaped(canonical_url),
+            "base_url": escaped(config["base_url"]),
+            "social_image_url": escaped(f'{config["base_url"]}/assets/logo-light.png'),
             "base_path": escaped(config["base_path"]),
             "repository_url": escaped(config["repository_url"]),
             "content": content,
@@ -387,6 +397,7 @@ def render_script_page(config: dict[str, Any], script: dict[str, Any]) -> str:
         f"{script['name']} | {config['site_title']}",
         content,
         script["page_url"],
+        page_description=script["description"],
     )
 
 
@@ -415,6 +426,7 @@ def generate_sitemap(config: dict[str, Any]) -> None:
             output=output,
             exclude=sitemap["exclude"],
             pretty_urls=sitemap["pretty_urls"],
+            text_output=SITE_DIR / sitemap["text_output"],
         )
     except (OSError, ValueError) as exc:
         fail(f"sitemap generation failed: {exc}")

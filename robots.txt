@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://pisaucer.github.io/toolbox/sitemap.xml
+Sitemap: https://pisaucer.github.io/toolbox/sitemap.txt

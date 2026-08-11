@@ -1,6 +1,7 @@
 {
   "site_title": "toolbox",
   "site_description": "My personal toolbox of utility scripts",
+  "site_long_description": "A collection of utility scripts for converting files, processing media, managing data, and automating common command-line tasks.",
   "site_author": "PiSaucer",
   "site_language": "en",
   "base_url": "https://pisaucer.github.io/toolbox",
@@ -9,6 +10,7 @@
   "sitemap": {
     "enabled": true,
     "output": "sitemap.xml",
+    "text_output": "sitemap.txt",
     "pretty_urls": true,
     "exclude": [
       "google*.html"
