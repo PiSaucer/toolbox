@@ -2,7 +2,7 @@
 # generate_sitemap.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.1.0
+# Version 1.2.0
 
 # Generate a sitemap.xml file from HTML files below a website root.
 # Usage: python3 generate_sitemap.py --root SITE_DIR --base-url https://example.com/
@@ -100,6 +100,14 @@ def write_sitemap(entries: list[tuple[str, str]], output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+def write_text_sitemap(entries: list[tuple[str, str]], output: Path) -> None:
+    """Write a plain-text sitemap containing one absolute URL per line."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        "".join(f"{url}\n" for url, _last_modified in entries),
+        encoding="utf-8",
+    )
+
 def validate_base_url(base_url: str) -> str:
     """Validate and normalize a public website base URL.
 
@@ -130,6 +138,7 @@ def generate_sitemap(
     output: Path | None = None,
     exclude: list[str] | None = None,
     pretty_urls: bool = False,
+    text_output: Path | None = None,
 ) -> int:
     """Generate a sitemap and return the number of URLs written."""
     root = root.expanduser().resolve()
@@ -148,6 +157,8 @@ def generate_sitemap(
         for path in html_files
     ]
     write_sitemap(entries, destination)
+    if text_output is not None:
+        write_text_sitemap(entries, text_output.expanduser().resolve())
     return len(entries)
 
 def parse_args() -> argparse.Namespace:
@@ -191,6 +202,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Write directory URLs instead of URLs ending in index.html",
     )
+    parser.add_argument(
+        "--text-output",
+        type=Path,
+        help="Also write a plain-text sitemap with one URL per line",
+    )
     return parser.parse_args()
 
 def main() -> int:
@@ -209,6 +225,7 @@ def main() -> int:
             output=output,
             exclude=args.exclude,
             pretty_urls=args.pretty_urls,
+            text_output=args.text_output,
         )
     except (OSError, ValueError) as error:
         print(f"Error: {error}", file=sys.stderr)

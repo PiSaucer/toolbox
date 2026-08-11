@@ -3,7 +3,7 @@
   "name": "Sitemap Generator",
   "entry": "generate_sitemap.py",
   "path": "scripts/generate_sitemap.py",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "PiSaucer",
   "license": "MIT",
   "language": "python",
@@ -14,8 +14,8 @@
   "requirements": ["Python 3.10+"],
   "tags": ["Sitemap", "XML", "HTML", "SEO", "Web"],
   "usage": [
-    "python3 ./scripts/generate_sitemap.py --root ./site --base-url https://example.com/",
-    "python3 ./scripts/generate_sitemap.py --root ./public --base-url https://example.com/docs/ --pretty-urls",
-    "python3 ./scripts/generate_sitemap.py --root ./site --base-url https://example.com/ --output ./dist/sitemap.xml --exclude 'private/*.html'"
+    "python3 generate_sitemap.py --root ./site --base-url https://example.com/",
+    "python3 generate_sitemap.py --root ./public --base-url https://example.com/docs/ --pretty-urls",
+    "python3 generate_sitemap.py --root ./site --base-url https://example.com/ --output ./dist/sitemap.xml --exclude 'private/*.html'"
   ]
 }
