@@ -19,14 +19,15 @@ import tempfile
 import textwrap
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import unquote, urlparse
 
 from rich.console import Console
 from rich.text import Text
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 DEFAULT_URL = "https://pisaucer.github.io/toolbox/manifest.json"
+LATEST_RELEASE_URL = "https://api.github.com/repos/PiSaucer/toolbox/releases/latest"
 SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 TOOLBOX_ART = [
     " _              _ _               ",
@@ -35,16 +36,10 @@ TOOLBOX_ART = [
     "| || (_) | (_) | | |_) | (_) >  < ",
     " \\__\\___/ \\___/|_|_.__/ \\___/_/\\_\\",
 ]
-ANSI_RESET = "\033[0m"
-ANSI_BOLD = "\033[1m"
-ANSI_BLUE = "\033[34m"
-ANSI_GREEN = "\033[32m"
-ANSI_CYAN = "\033[36m"
-ANSI_YELLOW = "\033[33m"
 console = Console(highlight=False)
 error_console = Console(stderr=True, highlight=False)
 
-def installation_source(module_path: Path | None = None) -> str:
+def installation_source(module_path: Optional[Path] = None) -> str:
     """Describe how the running copy of toolbox was installed.
 
     The project is also distributed as a single Python file, so package
@@ -82,7 +77,7 @@ def installation_source(module_path: Path | None = None) -> str:
 
 def version_text(
     program: str = "toolbox",
-    module_path: Path | None = None,
+    module_path: Optional[Path] = None,
 ) -> str:
     """Build version output with installation source and location.
 
@@ -102,6 +97,92 @@ def version_text(
         f"source: {source}\n"
         f"location: {path}"
     )
+
+def version_tuple(version: str) -> tuple[int, int, int]:
+    """Convert a stable semantic version (optionally prefixed with ``v``)."""
+    match = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", version.strip())
+    if match is None:
+        raise ValueError(f"invalid version: {version}")
+    return tuple(int(part) for part in match.groups())
+
+def fetch_latest_version() -> str:
+    """Return the version from the latest GitHub release."""
+    request = urllib.request.Request(
+        LATEST_RELEASE_URL,
+        headers={
+            "User-Agent": f"toolbox-tui/{__version__}",
+            "Accept": "application/vnd.github+json",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=3) as response:
+        status = getattr(response, "status", 200)
+        if status != 200:
+            raise RuntimeError(f"failed to check for updates: HTTP {status}")
+        release = json.loads(response.read().decode("utf-8"))
+    tag = release.get("tag_name") if isinstance(release, dict) else None
+    if not isinstance(tag, str):
+        raise RuntimeError("latest release is missing a version tag")
+    version_tuple(tag)
+    return tag.removeprefix("v")
+
+def upgrade_command(source: str) -> str:
+    """Return the appropriate upgrade command for an installation source."""
+    if source == "Homebrew":
+        return "brew update && brew upgrade PiSaucer/tap/toolbox"
+    if source == "pipx (PyPI)":
+        return "pipx upgrade pisaucer-toolbox"
+    if source == "uv tool (PyPI)":
+        return "uv tool upgrade pisaucer-toolbox"
+    if source == "pip (PyPI)":
+        return "python -m pip install --upgrade pisaucer-toolbox"
+    if source == "install.sh download":
+        return "curl -fsSL https://pisaucer.github.io/toolbox/install.sh | sh"
+    if source == "install.ps1 download":
+        return "irm https://pisaucer.github.io/toolbox/install.ps1 | iex"
+    if source == "source checkout":
+        return "git pull"
+    if source == "Toolbox Desktop":
+        return "Update Toolbox Desktop to update its bundled toolbox CLI"
+    if source == "standalone download":
+        return (
+            "curl -fL https://pisaucer.github.io/toolbox/toolbox.py "
+            "-o toolbox.py"
+        )
+    return "https://github.com/PiSaucer/toolbox/releases/latest"
+
+def version_text_with_update(
+    program: str = "toolbox",
+    module_path: Optional[Path] = None,
+) -> str:
+    """Build version output and, when available, include an update notice."""
+    text = version_text(program, module_path)
+    try:
+        latest = fetch_latest_version()
+        if version_tuple(latest) > version_tuple(__version__):
+            source = installation_source(module_path)
+            text += (
+                f"\n\nUpdate available: {__version__} -> {latest}\n"
+                f"Upgrade: {upgrade_command(source)}"
+            )
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError):
+        # Version reporting should continue to work when GitHub is unavailable.
+        pass
+    return text
+
+class VersionAction(argparse.Action):
+    """Print version information, checking for an update only on demand."""
+
+    def __init__(self, option_strings: list[str], dest: str, **kwargs: Any) -> None:
+        super().__init__(option_strings, dest, nargs=0, **kwargs)
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: Any,
+        option_string: Optional[str] = None,
+    ) -> None:
+        parser.exit(message=version_text_with_update(parser.prog) + "\n")
 
 def fetch_manifest(url: str) -> dict[str, Any]:
     """Fetch and validate a JSON manifest.
@@ -186,7 +267,7 @@ def download_script(script: dict[str, Any], output_dir: Path) -> Path:
         download_url,
         headers={"User-Agent": f"toolbox-tui/{__version__}"},
     )
-    temporary_path: Path | None = None
+    temporary_path: Optional[Path] = None
 
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
@@ -496,23 +577,6 @@ def run_usage_examples(script: dict[str, Any]) -> list[str]:
         examples.append(":run" + (f" {shlex.join(parts)}" if parts else ""))
     return examples
 
-def colorize(text: str, *codes: str, stream: Any = None) -> str:
-    """Conditionally wrap text in ANSI styling codes.
-
-    Args:
-        text: Text to style.
-        *codes: ANSI escape sequences to prepend.
-        stream: Output stream used to detect terminal support. Defaults to
-            ``sys.stdout``.
-
-    Returns:
-        Styled text when color is supported and allowed; otherwise ``text``.
-    """
-    output = sys.stdout if stream is None else stream
-    if not output.isatty() or os.environ.get("NO_COLOR") is not None:
-        return text
-    return "".join(codes) + text + ANSI_RESET
-
 def print_download_receipt(script: dict[str, Any], destination: Path) -> None:
     """Print a receipt for a downloaded script.
 
@@ -532,15 +596,15 @@ def print_download_receipt(script: dict[str, Any], destination: Path) -> None:
     )
 
 def print_toolbox_art(
-    message: str | None = None,
-    message_color: str = ANSI_CYAN,
+    message: Optional[str] = None,
+    message_style: str = "bold cyan",
     stream: Any = None,
 ) -> None:
     """Print the toolbox banner and an optional message.
 
     Args:
         message: Text to print below the banner, if any.
-        message_color: ANSI color to use for the optional message.
+        message_style: Rich style to use for the optional message.
         stream: Destination stream. Defaults to ``sys.stdout``.
     """
     output = sys.stdout if stream is None else stream
@@ -548,13 +612,7 @@ def print_toolbox_art(
     for line in TOOLBOX_ART:
         rich_console.print(line, style="bold blue")
     if message:
-        style = {
-            ANSI_CYAN: "bold cyan",
-            ANSI_YELLOW: "bold yellow",
-            ANSI_GREEN: "bold green",
-            ANSI_BLUE: "bold blue",
-        }.get(message_color, "bold")
-        rich_console.print(message, style=style)
+        rich_console.print(message, style=message_style)
 
 def clip_text(text: str, width: int) -> str:
     """Clip text to a display width.
@@ -687,8 +745,8 @@ def detail_field_lines(
     value: str,
     width: int,
     style: str = "normal",
-    link: str | None = None,
-) -> list[tuple[str, str, str | None]]:
+    link: Optional[str] = None,
+) -> list[tuple[str, str, Optional[str]]]:
     """Wrap a labeled value into styled detail-pane lines.
 
     Args:
@@ -784,7 +842,7 @@ def format_detail_line(label: str, value: str, width: int) -> str:
 
 def tui_select(
     stdscr: curses.window, scripts: list[dict[str, Any]], url: str
-) -> tuple[str, str, list[str]] | None:
+) -> Optional[tuple[str, str, list[str]]]:
     """Run the interactive script selector.
 
     Args:
@@ -811,7 +869,7 @@ def tui_select(
     selected = 0
     offset = 0
     query = ""
-    input_mode: str | None = None
+    input_mode: Optional[str] = None
     input_text = ""
     message = ""
     detail_offset = 0
@@ -974,7 +1032,7 @@ def tui_select(
         # widths interfering with curses' screen-position accounting.
         visible_links: list[tuple[int, int, str, str]] = []
         if show_details:
-            detail_lines: list[tuple[str, str, str | None]] = []
+            detail_lines: list[tuple[str, str, Optional[str]]] = []
             detail_lines.extend(detail_field_lines("Name", name or sid, detail_w))
             detail_lines.extend(detail_field_lines("ID", sid, detail_w))
             detail_lines.extend(
@@ -1222,7 +1280,7 @@ def wrap_text(text: str, width: int) -> list[str]:
     lines.append(clip_text(current, width))
     return lines
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     """Parse toolbox command-line arguments.
 
     Args:
@@ -1243,8 +1301,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--version",
-        action="version",
-        version=version_text("%(prog)s"),
+        action=VersionAction,
+        help="show installed version and check for updates",
     )
     parser.add_argument(
         "--completion-script-ids",
@@ -1272,7 +1330,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     return parser.parse_args(argv)
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     """Run the toolbox command-line application.
 
     Args:
@@ -1302,7 +1360,7 @@ def main(argv: list[str] | None = None) -> int:
             if selection is None:
                 print_toolbox_art(
                     "Toolbox closed — no scripts were downloaded.",
-                    ANSI_YELLOW,
+                    "bold yellow",
                     sys.stderr,
                 )
                 return 1

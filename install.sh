@@ -81,13 +81,13 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-# toolbox.py requires Python 3.11+ and installs its console dependency below.
+# toolbox.py requires Python 3.9+ and installs its console dependency below.
 if ! command -v python3 >/dev/null 2>&1; then
-    printf "${RED}Error: Python 3.11 or newer is required.${NC}\n" >&2
+    printf "${RED}Error: Python 3.9 or newer is required.${NC}\n" >&2
     exit 1
 fi
-if ! python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 11))'; then
-    printf "${RED}Error: Python 3.11 or newer is required (found %s).${NC}\n" \
+if ! python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 9))'; then
+    printf "${RED}Error: Python 3.9 or newer is required (found %s).${NC}\n" \
         "$(python3 -c 'import platform; print(platform.python_version())')" >&2
     exit 1
 fi
