@@ -31,11 +31,14 @@ jobs:
           python -m pip install --upgrade build
           python -m build
 
-      - name: Add wheel to GitHub release
+      - name: Add release files to GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" dist/*.whl --clobber
+        run: |
+          version="${TAG#v}"
+          cp toolbox.py "dist/toolbox-${version}.py"
+          gh release upload "$TAG" dist/*.whl "dist/toolbox-${version}.py" --clobber
 
       - name: Publish distributions
         uses: pypa/gh-action-pypi-publish@release/v1
