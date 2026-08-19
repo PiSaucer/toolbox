@@ -477,11 +477,11 @@ def parse_tui_command(command: str) -> tuple[str, list[str]]:
     """
     parts = shlex.split(command)
     if not parts:
-        raise ValueError("Enter download, run [arguments], help, or quit")
+        raise ValueError("Enter add, download, run [arguments], help, or quit")
 
-    aliases = {"d": "download", "r": "run", "q": "quit", "?": "help"}
+    aliases = {"a": "add", "d": "download", "r": "run", "q": "quit", "?": "help"}
     action = aliases.get(parts[0].casefold(), parts[0].casefold())
-    if action not in {"download", "run", "help", "quit"}:
+    if action not in {"add", "download", "run", "help", "quit"}:
         raise ValueError(f"Unknown command: {parts[0]}")
     if action != "run" and len(parts) > 1:
         raise ValueError(f"{action} does not accept arguments")
@@ -1176,7 +1176,7 @@ def tui_select(
                     try:
                         action, arguments = parse_tui_command(input_text)
                         if action == "help":
-                            message = "Commands: download | run [args] | help | quit"
+                            message = "Commands: add | download | run [args] | help | quit"
                         elif action == "quit":
                             return None
                         elif current_scripts:
@@ -1482,7 +1482,8 @@ def system_tool_records(scripts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Detect script-declared host commands and return reproducibility records.
 
     Args:
-        scripts: Resolved manifest entries whose ``requirements`` are commands.
+        scripts: Resolved manifest entries whose ``requirements`` are commands
+            or supported runtime requirements such as ``Python 3.9+``.
 
     Returns:
         Stable system-tool records including path, detected version, and users.
@@ -1500,6 +1501,27 @@ def system_tool_records(scripts: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 required_by.setdefault(requirement.strip(), []).append(canonical_dependency(script))
     records: list[dict[str, Any]] = []
     for name in sorted(required_by, key=str.casefold):
+        python_requirement = re.fullmatch(
+            r"python\s+(\d+(?:\.\d+)*)\+", name, re.IGNORECASE
+        )
+        if python_requirement:
+            required_version = semantic_version(python_requirement.group(1))
+            installed_version = tuple(sys.version_info[:3])
+            if installed_version < required_version:
+                joined = ", ".join(sorted(required_by[name], key=str.casefold))
+                found = ".".join(str(part) for part in installed_version)
+                raise RuntimeError(
+                    f"Required system dependency not satisfied: Python>="
+                    f"{python_requirement.group(1)}\nFound: {found}\n"
+                    f"Required by: {joined}"
+                )
+            records.append({
+                "name": "Python",
+                "path": sys.executable,
+                "version": ".".join(str(part) for part in installed_version),
+                "required_by": sorted(required_by[name], key=str.casefold),
+            })
+            continue
         executable = shutil.which(name)
         if executable is None:
             joined = ", ".join(sorted(required_by[name], key=str.casefold))
@@ -1796,6 +1818,19 @@ def main(argv: Optional[list[str]] = None) -> int:
                 return 1
             action, selected_id, run_arguments = selection
             selected_scripts = [find_script(scripts, selected_id)]
+
+        if not args.script_names and action == "add":
+            toolfile = (args.file or Path.cwd() / TOOLFILE_NAME).expanduser().resolve()
+            modify_toolfile(toolfile, selected_id, scripts)
+            installed_count = install_project_dependencies(
+                toolfile, manifest, args.output_dir
+            )
+            print_toolbox_art(
+                f"Installed {installed_count} Toolfile dependenc"
+                f"{'y' if installed_count == 1 else 'ies'}.",
+                "bold green",
+            )
+            return 0
 
         for selected_script in selected_scripts:
             if not args.script_names and action == "run":
