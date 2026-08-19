@@ -7,6 +7,7 @@ import html
 import json
 import re
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -183,6 +184,30 @@ def sha256_file(path: Path) -> str:
             digest.update(chunk)
     return digest.hexdigest()
 
+
+def source_commit(script_path: Path) -> str:
+    """Return the most recent commit which changed an exact script artifact.
+
+    Args:
+        script_path: Repository-relative script artifact to inspect.
+
+    Returns:
+        Full Git commit hash of the last change to ``script_path``.
+
+    Raises:
+        ValueError: If Git cannot determine the script's source commit.
+    """
+    try:
+        return subprocess.check_output(
+            [
+                "git", "-C", str(ROOT), "log", "-1", "--format=%H", "--",
+                str(script_path.relative_to(ROOT)),
+            ],
+            text=True,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        fail(f"could not determine source Git commit for {script_path}: {exc}")
+
 def load_scripts(config: dict[str, Any], schema: MetadataSchema) -> list[dict[str, Any]]:
     scripts: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
@@ -203,10 +228,12 @@ def load_scripts(config: dict[str, Any], schema: MetadataSchema) -> list[dict[st
         if not script_path.is_file():
             fail(f"{metadata_path}: script file does not exist: {item['path']}")
 
+        commit = source_commit(script_path)
         enriched = dict(item)
+        enriched["commit"] = commit
         enriched["sha256"] = sha256_file(script_path)
-        enriched["download_url"] = f"https://raw.githubusercontent.com/{config['repository']}/{config['branch']}/{item['path']}"
-        enriched["source_url"] = f"{config['repository_url']}/blob/{config['branch']}/{item['path']}"
+        enriched["download_url"] = f"https://raw.githubusercontent.com/{config['repository']}/{commit}/{item['path']}"
+        enriched["source_url"] = f"{config['repository_url']}/blob/{commit}/{item['path']}"
         enriched["page_url"] = f"{config['base_url']}/scripts/{item['id']}/"
         enriched["page_path"] = f"{config['base_path']}/scripts/{item['id']}/"
         enriched["metadata_path"] = str(metadata_path.relative_to(ROOT))
@@ -274,6 +301,7 @@ def minimal_manifest(scripts: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "tags",
         "platforms",
         "category",
+        "commit",
         "download_url",
         "source_url",
         "page_url",
