@@ -14,21 +14,27 @@ import os
 import platform
 import re
 import shlex
+import shutil
 import subprocess
 import tempfile
 import textwrap
 import urllib.request
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from rich.console import Console
 from rich.text import Text
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 DEFAULT_URL = "https://pisaucer.github.io/toolbox/manifest.json"
 LATEST_RELEASE_URL = "https://api.github.com/repos/PiSaucer/toolbox/releases/latest"
 SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
+TOOLFILE_NAME = "Toolfile"
+LOCKFILE_NAME = "Toolfile.lock"
+DEPENDENCY_PATTERN = re.compile(
+    r"^(?P<name>[A-Za-z0-9][A-Za-z0-9._-]*)(?P<constraints>(?:(?:==|!=|>=|<=|>|<)[^,\s#]+)(?:,(?:(?:==|!=|>=|<=|>|<)[^,\s#]+)*)?)?$"
+)
 TOOLBOX_ART = [
     " _              _ _               ",
     "| |_ ___   ___ | | |__   _____  __",
@@ -1280,6 +1286,376 @@ def wrap_text(text: str, width: int) -> list[str]:
     lines.append(clip_text(current, width))
     return lines
 
+def semantic_version(value: str) -> tuple[int, ...]:
+    """Parse a simple stable semantic version for dependency comparisons.
+
+    Args:
+        value: A version with one to three numeric components.
+
+    Returns:
+        Three numeric components suitable for tuple comparison.
+
+    Raises:
+        ValueError: If ``value`` is not a supported stable semantic version.
+    """
+    match = re.fullmatch(r"v?(\d+)(?:\.(\d+))?(?:\.(\d+))?", value.strip())
+    if match is None:
+        raise ValueError(f"invalid semantic version: {value}")
+    return tuple(int(part or 0) for part in match.groups())
+
+def version_satisfies(version: str, constraints: str) -> bool:
+    """Return whether a version satisfies comma-separated Toolfile bounds.
+
+    Args:
+        version: Version to evaluate.
+        constraints: Empty or comma-separated no-space version constraints.
+
+    Returns:
+        ``True`` when every supplied constraint is satisfied.
+
+    Raises:
+        ValueError: If a version in a syntactically valid constraint is not
+            semantic-version compatible.
+    """
+    candidate = semantic_version(version)
+    if not constraints:
+        return True
+    for constraint in constraints.split(","):
+        match = re.fullmatch(r"(==|!=|>=|<=|>|<)([^,\s]+)", constraint)
+        if match is None:
+            return False
+        operator, required_text = match.groups()
+        required = semantic_version(required_text)
+        if not {
+            "==": candidate == required, "!=": candidate != required,
+            ">=": candidate >= required, "<=": candidate <= required,
+            ">": candidate > required, "<": candidate < required,
+        }[operator]:
+            return False
+    return True
+
+def parse_toolfile(path: Path) -> list[dict[str, Any]]:
+    """Parse a Toolfile, retaining source locations for useful diagnostics.
+
+    Args:
+        path: Toolfile to read.
+
+    Returns:
+        Normalized dependency records in source order.
+
+    Raises:
+        RuntimeError: If the file cannot be read, has invalid syntax, or
+            declares the same dependency more than once.
+    """
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise RuntimeError(f"could not read {path}: {exc}") from exc
+    dependencies: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for number, raw in enumerate(lines, 1):
+        declaration = raw.split("#", 1)[0].strip()
+        if not declaration:
+            continue
+        match = DEPENDENCY_PATTERN.fullmatch(declaration)
+        if match is None:
+            raise RuntimeError(
+                f"{path}:{number}: Invalid dependency specification:\n{raw}\n"
+                "Dependency declarations cannot contain spaces and must use "
+                "a supported version operator."
+            )
+        name = match.group("name")
+        key = name.casefold()
+        if key in seen:
+            raise RuntimeError(f"{path}:{number}: duplicate dependency: {name}")
+        seen.add(key)
+        dependencies.append({"name": name, "constraints": match.group("constraints") or "", "line": number})
+    return dependencies
+
+def toolfile_fingerprint(dependencies: list[dict[str, Any]]) -> str:
+    """Create a comment- and whitespace-independent Toolfile fingerprint.
+
+    Args:
+        dependencies: Parsed Toolfile dependency records.
+
+    Returns:
+        SHA-256 digest of normalized declarations in stable order.
+    """
+    normalized = "\n".join(
+        f"{item['name'].casefold()}{item['constraints']}"
+        for item in sorted(dependencies, key=lambda item: item["name"].casefold())
+    )
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+def canonical_dependency(script: dict[str, Any]) -> str:
+    """Return the manifest spelling suitable for a no-space declaration.
+
+    Args:
+        script: Manifest script entry.
+
+    Returns:
+        A canonical script name or ID compatible with Toolfile syntax.
+
+    Raises:
+        RuntimeError: If the manifest entry has no usable script ID.
+    """
+    name = script.get("name")
+    if isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name.strip()):
+        return name.strip()
+    value = script.get("id")
+    if not isinstance(value, str) or not value.strip():
+        raise RuntimeError("selected script is missing a canonical id")
+    return value.strip()
+
+def read_lockfile(path: Path) -> dict[str, Any]:
+    """Read and validate Toolbox's deterministic JSON lock file.
+
+    Args:
+        path: Lock file to read.
+
+    Returns:
+        Validated lock-file object.
+
+    Raises:
+        RuntimeError: If the file is malformed or uses an unsupported format.
+    """
+    try:
+        lock = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"malformed lock file {path}: {exc}") from exc
+    if not isinstance(lock, dict) or lock.get("lock_version") != 1:
+        raise RuntimeError(f"unsupported lock-file version in {path}")
+    if not isinstance(lock.get("scripts"), list) or not isinstance(lock.get("toolfile_hash"), str):
+        raise RuntimeError(f"malformed lock file {path}")
+    return lock
+
+def write_lockfile(path: Path, lock: dict[str, Any]) -> None:
+    """Write lock data with stable ordering and no generated timestamps.
+
+    Args:
+        path: Destination ``Toolfile.lock`` path.
+        lock: Lock-file object to serialize.
+    """
+    lock["scripts"] = sorted(lock.get("scripts", []), key=lambda item: item["name"].casefold())
+    lock["system_tools"] = sorted(lock.get("system_tools", []), key=lambda item: item["name"].casefold())
+    path.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+def script_commit(script: dict[str, Any]) -> str:
+    """Obtain the immutable source commit advertised by a manifest entry.
+
+    Current manifests can include ``commit`` directly.  A raw GitHub URL with
+    a 40-character revision is also immutable.  Older manifests do not carry
+    enough provenance to lock safely, so fail rather than recording HEAD.
+
+    Args:
+        script: Manifest entry with source metadata.
+
+    Returns:
+        Lowercase Git commit hash for the exact script artifact.
+
+    Raises:
+        RuntimeError: If immutable commit provenance is unavailable.
+    """
+    commit = script.get("commit") or script.get("git_commit")
+    if isinstance(commit, str) and re.fullmatch(r"[0-9a-fA-F]{7,64}", commit.strip()):
+        return commit.strip().lower()
+    url = script.get("download_url")
+    if isinstance(url, str):
+        match = re.match(r"https://raw\.githubusercontent\.com/[^/]+/[^/]+/([0-9a-fA-F]{40})/", url)
+        if match:
+            return match.group(1).lower()
+        github = re.match(r"https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/(.*)", url)
+        if github:
+            owner, repository, revision, path = github.groups()
+            api_url = (f"https://api.github.com/repos/{owner}/{repository}/commits?"
+                       f"path={quote(path)}&sha={quote(revision)}&per_page=1")
+            request = urllib.request.Request(api_url, headers={"User-Agent": f"toolbox-tui/{__version__}", "Accept": "application/vnd.github+json"})
+            with urllib.request.urlopen(request, timeout=10) as response:
+                commits = json.loads(response.read().decode("utf-8"))
+            if isinstance(commits, list) and commits and isinstance(commits[0], dict):
+                sha = commits[0].get("sha")
+                if isinstance(sha, str) and re.fullmatch(r"[0-9a-fA-F]{40}", sha):
+                    return sha.lower()
+    raise RuntimeError("selected script is missing an immutable Git commit hash")
+
+def system_tool_records(scripts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Detect script-declared host commands and return reproducibility records.
+
+    Args:
+        scripts: Resolved manifest entries whose ``requirements`` are commands.
+
+    Returns:
+        Stable system-tool records including path, detected version, and users.
+
+    Raises:
+        RuntimeError: If a required host command cannot be found.
+    """
+    required_by: dict[str, list[str]] = {}
+    for script in scripts:
+        requirements = script.get("requirements", [])
+        if not isinstance(requirements, list):
+            continue
+        for requirement in requirements:
+            if isinstance(requirement, str) and requirement.strip():
+                required_by.setdefault(requirement.strip(), []).append(canonical_dependency(script))
+    records: list[dict[str, Any]] = []
+    for name in sorted(required_by, key=str.casefold):
+        executable = shutil.which(name)
+        if executable is None:
+            joined = ", ".join(sorted(required_by[name], key=str.casefold))
+            raise RuntimeError(f"Missing required system tool: {name}\nRequired by: {joined}")
+        version = "unknown"
+        try:
+            output = subprocess.run([executable, "--version"], capture_output=True, text=True, timeout=3, check=False)
+            match = re.search(r"\d+(?:\.\d+){1,3}", output.stdout + output.stderr)
+            if match:
+                version = match.group(0)
+        except (OSError, subprocess.SubprocessError):
+            pass
+        records.append({"name": name, "path": executable, "version": version,
+                        "required_by": sorted(required_by[name], key=str.casefold)})
+    return records
+
+def locked_entry_is_compatible(entry: dict[str, Any], dependency: dict[str, Any]) -> bool:
+    """Return whether one lock entry can reproduce a dependency declaration.
+
+    Args:
+        entry: Candidate record from ``Toolfile.lock``.
+        dependency: Parsed, canonicalized Toolfile dependency record.
+
+    Returns:
+        ``True`` when name, version constraint, hash, commit, and URL are valid.
+    """
+    return (entry.get("name", "").casefold() == dependency["name"].casefold()
+            and isinstance(entry.get("version"), str)
+            and version_satisfies(entry["version"], dependency["constraints"])
+            and isinstance(entry.get("sha256"), str) and isinstance(entry.get("commit"), str)
+            and isinstance(entry.get("url"), str))
+
+def install_project_dependencies(toolfile: Path, manifest: dict[str, Any], output_dir: Path,
+                                 refresh: bool = False, only: Optional[str] = None) -> int:
+    """Resolve/install a Toolfile and regenerate its exact lock when needed.
+
+    Args:
+        toolfile: Project dependency specification to install.
+        manifest: Fetched Toolbox manifest.
+        output_dir: Directory receiving verified script files.
+        refresh: Replace a locked artifact only when a newer allowed manifest
+            version is available.
+        only: Optional canonical dependency to refresh; all others stay locked.
+
+    Returns:
+        Number of Toolfile dependencies installed.
+
+    Raises:
+        RuntimeError: If resolution, provenance, download verification, or host
+            system-tool validation cannot be completed safely.
+    """
+    dependencies = parse_toolfile(toolfile)
+    scripts = get_scripts(manifest)
+    lock_path = toolfile.with_name(LOCKFILE_NAME)
+    fingerprint = toolfile_fingerprint(dependencies)
+    existing = read_lockfile(lock_path) if lock_path.exists() else None
+    compatible_lock = existing if existing and existing.get("toolfile_hash") == fingerprint else None
+    resolved_entries: list[dict[str, Any]] = []
+    resolved_scripts: list[dict[str, Any]] = []
+    for dependency in dependencies:
+        script = find_script(scripts, dependency["name"])
+        canonical = canonical_dependency(script)
+        dependency = {**dependency, "name": canonical}
+        locked = next((item for item in (compatible_lock or {}).get("scripts", [])
+                       if isinstance(item, dict) and locked_entry_is_compatible(item, dependency)), None)
+        use_locked = bool(locked)
+        refresh_this = refresh and (only is None or canonical.casefold() == only.casefold())
+        if refresh_this and locked:
+            available_version = script.get("version")
+            if (isinstance(available_version, str)
+                    and version_satisfies(available_version, dependency["constraints"])
+                    and semantic_version(available_version) > semantic_version(locked["version"])):
+                use_locked = False
+        elif refresh_this:
+            use_locked = False
+        if use_locked:
+            entry = locked
+            artifact = {"download_url": entry["url"], "sha256": entry["sha256"]}
+            download_script(artifact, output_dir)
+        else:
+            version = script.get("version")
+            if not isinstance(version, str) or not version_satisfies(version, dependency["constraints"]):
+                raise RuntimeError(f"no available version of {canonical} satisfies {dependency['constraints'] or 'the requested constraint'}")
+            url, sha256, _ = script_download_details(script)
+            entry = {"name": canonical, "id": script.get("id"), "version": version,
+                     "commit": script_commit(script), "sha256": sha256, "url": url}
+            download_script(script, output_dir)
+        resolved_entries.append(entry)
+        resolved_scripts.append(script)
+    records = system_tool_records(resolved_scripts)
+    if compatible_lock:
+        previous_tools = {
+            item.get("name"): item for item in compatible_lock.get("system_tools", [])
+            if isinstance(item, dict) and isinstance(item.get("name"), str)
+        }
+        for record in records:
+            previous = previous_tools.get(record["name"])
+            if (previous and previous.get("version") not in {None, "unknown"}
+                    and record["version"] not in {"unknown", previous.get("version")}):
+                console.print(
+                    f"System dependency changed: {record['name']}: locked "
+                    f"{previous['version']}, installed {record['version']}", style="yellow"
+                )
+    write_lockfile(lock_path, {"lock_version": 1, "toolfile_hash": fingerprint,
+                               "scripts": resolved_entries, "system_tools": records})
+    return len(resolved_entries)
+
+def modify_toolfile(toolfile: Path, declaration: str, scripts: list[dict[str, Any]], remove: bool = False) -> None:
+    """Add, update, or remove one declaration while preserving unrelated lines.
+
+    Args:
+        toolfile: Toolfile to create or update.
+        declaration: User-supplied no-space dependency declaration.
+        scripts: Available manifest entries used for canonicalization.
+        remove: Remove the declaration instead of adding or updating it.
+
+    Raises:
+        RuntimeError: If the declaration is invalid, unknown, unversioned, or
+            cannot be removed because it is absent.
+    """
+    match = DEPENDENCY_PATTERN.fullmatch(declaration)
+    if match is None:
+        raise RuntimeError(f"Invalid dependency specification: {declaration}")
+    script = find_script(scripts, match.group("name"))
+    canonical = canonical_dependency(script)
+    constraints = match.group("constraints")
+    if not constraints and not remove:
+        version = script.get("version")
+        if not isinstance(version, str):
+            raise RuntimeError(f"selected script is missing a version: {canonical}")
+        # A bare add should not silently permit versions older than the one the
+        # user selected from today's manifest.
+        constraints = f">={version}"
+    replacement = canonical + (constraints or "")
+    lines = toolfile.read_text(encoding="utf-8").splitlines() if toolfile.exists() else []
+    changed = False
+    retained: list[str] = []
+    for raw in lines:
+        body, marker, comment = raw.partition("#")
+        old = body.strip()
+        old_match = DEPENDENCY_PATTERN.fullmatch(old)
+        if old_match and old_match.group("name").casefold() == canonical.casefold():
+            if not changed and not remove:
+                indent = body[:len(body) - len(body.lstrip())]
+                retained.append(indent + replacement + ((" #" + comment) if marker else ""))
+            changed = True
+            continue
+        retained.append(raw)
+    if not remove and not changed:
+        if retained and retained[-1].strip():
+            retained.append("")
+        retained.append(replacement)
+    if remove and not changed:
+        raise RuntimeError(f"dependency not found in {toolfile}: {canonical}")
+    toolfile.write_text("\n".join(retained) + ("\n" if retained else ""), encoding="utf-8")
+
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     """Parse toolbox command-line arguments.
 
@@ -1297,6 +1673,9 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="toolbox",
         description="Select and securely download a script from the toolbox manifest.",
+        epilog=("Toolfile: toolbox install [SCRIPT] [--file Toolfile], "
+                "toolbox add SCRIPT[CONSTRAINT], toolbox remove SCRIPT, "
+                "toolbox update [SCRIPT]."),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -1328,6 +1707,11 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         default=Path.cwd(),
         help="directory where the selected script will be saved (default: current directory)",
     )
+    parser.add_argument(
+        "--file",
+        type=Path,
+        help="Toolfile path for install (default: ./Toolfile)",
+    )
     return parser.parse_args(argv)
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -1351,6 +1735,52 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.completion_script_ids:
             for script in scripts:
                 console.print(script["id"], markup=False, highlight=False)
+            return 0
+
+        command = args.script_names[0].casefold() if args.script_names else ""
+        if command in {"install", "add", "remove", "update"}:
+            command_args = args.script_names[1:]
+            toolfile = (args.file or Path.cwd() / TOOLFILE_NAME).expanduser().resolve()
+            installed_count: int
+            if command == "install":
+                if command_args:
+                    if len(command_args) != 1:
+                        raise RuntimeError("usage: toolbox install [SCRIPT[VERSION-CONSTRAINT]]")
+                    # A named install is a convenient, backward-compatible
+                    # alias for adding that script to the current project.
+                    modify_toolfile(toolfile, command_args[0], scripts)
+                    installed_count = install_project_dependencies(toolfile, manifest, args.output_dir)
+                else:
+                    if not toolfile.is_file():
+                        raise RuntimeError(f"Toolfile not found: {toolfile}")
+                    installed_count = install_project_dependencies(toolfile, manifest, args.output_dir)
+            elif command == "add":
+                if len(command_args) != 1:
+                    raise RuntimeError("usage: toolbox add SCRIPT[VERSION-CONSTRAINT]")
+                modify_toolfile(toolfile, command_args[0], scripts)
+                installed_count = install_project_dependencies(toolfile, manifest, args.output_dir)
+            elif command == "remove":
+                if len(command_args) != 1:
+                    raise RuntimeError("usage: toolbox remove SCRIPT")
+                modify_toolfile(toolfile, command_args[0], scripts, remove=True)
+                # A removed final dependency still gets a valid empty lock.
+                installed_count = install_project_dependencies(toolfile, manifest, args.output_dir)
+            else:
+                if len(command_args) > 1:
+                    raise RuntimeError("usage: toolbox update [SCRIPT]")
+                if not toolfile.is_file():
+                    raise RuntimeError(f"Toolfile not found: {toolfile}")
+                target = command_args[0] if command_args else None
+                if target is not None:
+                    target = canonical_dependency(find_script(scripts, target))
+                installed_count = install_project_dependencies(
+                    toolfile, manifest, args.output_dir, refresh=True, only=target
+                )
+            print_toolbox_art(
+                f"Installed {installed_count} Toolfile dependenc"
+                f"{'y' if installed_count == 1 else 'ies'}.",
+                "bold green",
+            )
             return 0
 
         if args.script_names:
