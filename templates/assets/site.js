@@ -48,6 +48,34 @@ systemTheme.addEventListener('change', () => {
 
 applyTheme(getThemePreference());
 
+const isAppleMobileDevice = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+const desktopDownload = document.querySelector('[data-desktop-download]');
+if (desktopDownload && isAppleMobileDevice) {
+  const label = desktopDownload.querySelector('[data-desktop-download-label]');
+  const icon = desktopDownload.querySelector('i');
+  if (label) label.textContent = 'Share';
+  if (icon) icon.className = 'bi bi-box-arrow-up me-2';
+  desktopDownload.setAttribute('aria-label', 'Share this script to the Apple Shortcut');
+  desktopDownload.href = '#';
+
+  desktopDownload.addEventListener('click', async (event) => {
+    event.preventDefault();
+    if (!navigator.share) {
+      window.alert('Sharing is not available in this browser. Open this page in Safari to share it.');
+      return;
+    }
+    try {
+      await navigator.share({
+        url: desktopDownload.dataset.shareUrl,
+      });
+    } catch (error) {
+      if (error.name !== 'AbortError') console.error('Unable to open the share sheet.', error);
+    }
+  });
+}
+
 const detectedOsBadge = document.querySelector('[data-detected-os]');
 const osName = (() => {
   const userAgentDataPlatform = navigator.userAgentData && navigator.userAgentData.platform
