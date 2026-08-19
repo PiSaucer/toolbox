@@ -37,8 +37,9 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           version="${TAG#v}"
-          cp toolbox.py "dist/toolbox-${version}.py"
-          gh release upload "$TAG" dist/*.whl "dist/toolbox-${version}.py" --clobber
+          mkdir -p release-assets
+          cp toolbox.py "release-assets/toolbox-${version}.py"
+          gh release upload "$TAG" dist/*.whl "release-assets/toolbox-${version}.py" --clobber
 
       - name: Publish distributions
         uses: pypa/gh-action-pypi-publish@release/v1
