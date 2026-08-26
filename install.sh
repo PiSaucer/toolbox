@@ -28,7 +28,7 @@ helpFunction() {
     printf "\t-h, --help          Show this help message\n\n"
     printf "Environment:\n"
     printf "\tTOOLBOX_URL         Download toolbox.py from a different URL\n"
-    exit 1 # Exit script after printing help
+    exit 0 # Exit script after printing help
 }
 
 # Print a consistent option error
@@ -92,11 +92,75 @@ if ! python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 9))'; then
     exit 1
 fi
 
-# Install the same runtime dependency declared by pyproject.toml. Using
-# ``python -m pip`` keeps this paired with the interpreter that runs toolbox.
-if ! python3 -m pip install --user "rich>=13.9,<15"; then
-    printf "${RED}Error: Could not install the Rich console dependency.${NC}\n" >&2
+# Check to see if pip is installed for Python 3. If not, print an error message and exit.
+if ! python3 -m pip --version >/dev/null 2>&1; then
+    printf "${RED}Error: pip is not installed for python3.${NC}\n" >&2
+    printf "Install pip for Python 3 and try again.\n" >&2
     exit 1
+fi
+
+# Install Rich if it is not already available.
+if python3 -c 'import rich' >/dev/null 2>&1; then
+    printf "${GREEN}Rich is already installed.${NC}\n"
+else
+    rich_installed=0
+
+    # Prefer pip when Python allows normal user package installation.
+    if python3 -m pip --version >/dev/null 2>&1; then
+        externally_managed=$(
+            python3 -c '
+import pathlib
+import sysconfig
+
+stdlib = pathlib.Path(sysconfig.get_path("stdlib"))
+print("1" if (stdlib / "EXTERNALLY-MANAGED").exists() else "0")
+'
+        )
+
+        if [ "$externally_managed" = "0" ]; then
+            printf "Installing Rich using pip...\n"
+
+            if python3 -m pip install --user "rich>=13.9,<15"; then
+                rich_installed=1
+                printf "${GREEN}Installed Rich using pip.${NC}\n"
+            fi
+        else
+            printf "Python is externally managed; skipping pip.\n"
+        fi
+    else
+        printf "pip is not available; trying the system package manager.\n"
+    fi
+
+    # Debian/Ubuntu and similar distributions use apt.
+    if [ "$rich_installed" -eq 0 ] && command -v apt >/dev/null 2>&1; then
+        printf "Installing Rich using apt (python3-rich)...\n"
+
+        if [ "$(id -u)" -eq 0 ]; then
+            if apt install -y python3-rich; then
+                rich_installed=1
+                printf "${GREEN}Installed Rich using apt.${NC}\n"
+            fi
+        elif command -v sudo >/dev/null 2>&1; then
+            if sudo apt install -y python3-rich; then
+                rich_installed=1
+                printf "${GREEN}Installed Rich using apt.${NC}\n"
+            fi
+        else
+            printf "${RED}Error: sudo is required to install python3-rich.${NC}\n" >&2
+            exit 1
+        fi
+    fi
+
+    if [ "$rich_installed" -eq 0 ]; then
+        printf "${RED}Error: Could not install the Rich console dependency.${NC}\n" >&2
+        exit 1
+    fi
+
+    # Verify that Rich is importable by the Python used by Toolbox.
+    if ! python3 -c 'import rich' >/dev/null 2>&1; then
+        printf "${RED}Error: Rich was installed, but python3 cannot import it.${NC}\n" >&2
+        exit 1
+    fi
 fi
 
 install_dir="${prefix}/bin"
