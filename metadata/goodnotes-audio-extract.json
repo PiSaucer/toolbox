@@ -1,9 +1,9 @@
 {
   "id": "goodnotes-audio-extract",
   "name": "Goodnotes Audio Extractor",
-  "entry": "goodnotes-audio-extract.py",
-  "path": "scripts/goodnotes-audio-extract.py",
-  "version": "1.1.0",
+  "entry": "goodnotes_audio_extract.py",
+  "path": "scripts/goodnotes_audio_extract.py",
+  "version": "1.1.1",
   "author": "PiSaucer",
   "license": "MIT",
   "language": "python",
@@ -14,9 +14,9 @@
   "requirements": ["Python 3.9+", "ffmpeg", "ffprobe"],
   "tags": ["Goodnotes", "Audio", "MP3", "ffmpeg", "Extract"],
   "usage": [
-    "python3 goodnotes-audio-extract.py --goodnotes Notes.goodnotes",
-    "python3 goodnotes-audio-extract.py -g Notes.goodnotes -p ./recordings",
-    "python3 goodnotes-audio-extract.py -g Notes.goodnotes -i mp3_files.csv -o updated.csv",
-    "python3 goodnotes-audio-extract.py -g Notes.goodnotes --bitrate 256k --min-duration 1"
+    "python3 goodnotes_audio_extract.py --goodnotes Notes.goodnotes",
+    "python3 goodnotes_audio_extract.py -g Notes.goodnotes -p ./recordings",
+    "python3 goodnotes_audio_extract.py -g Notes.goodnotes -i mp3_files.csv -o updated.csv",
+    "python3 goodnotes_audio_extract.py -g Notes.goodnotes --bitrate 256k --min-duration 1"
   ]
 }

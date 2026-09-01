@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# srt-to-txt.py
+# srt_to_txt.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.0.0
+# Version 1.0.1
 
 # Convert an SRT subtitle file to plain UTF-8 text.
-# Usage: python3 srt-to-txt.py INPUT.srt [OUTPUT.txt]
+# Usage: python3 srt_to_txt.py INPUT.srt [OUTPUT.txt]
 
 import argparse
 import re

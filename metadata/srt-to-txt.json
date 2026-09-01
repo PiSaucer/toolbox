@@ -1,9 +1,9 @@
 {
   "id": "srt-to-txt",
   "name": "SRT to TXT",
-  "entry": "srt-to-txt.py",
-  "path": "scripts/srt-to-txt.py",
-  "version": "1.0.0",
+  "entry": "srt_to_txt.py",
+  "path": "scripts/srt_to_txt.py",
+  "version": "1.0.1",
   "author": "PiSaucer",
   "license": "MIT",
   "language": "python",
@@ -14,8 +14,8 @@
   "requirements": ["Python 3"],
   "tags": ["SRT", "Subtitles", "Text", "Python", "Convert"],
   "usage": [
-    "python3 ./scripts/srt-to-txt.py subtitles.srt",
-    "python3 ./scripts/srt-to-txt.py subtitles.srt transcript.txt",
-    "python3 ./scripts/srt-to-txt.py \"My Subtitles.srt\" \"output/My Transcript.txt\""
+    "python3 ./scripts/srt_to_txt.py subtitles.srt",
+    "python3 ./scripts/srt_to_txt.py subtitles.srt transcript.txt",
+    "python3 ./scripts/srt_to_txt.py \"My Subtitles.srt\" \"output/My Transcript.txt\""
   ]
 }

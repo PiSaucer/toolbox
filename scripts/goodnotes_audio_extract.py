@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# goodnotes-audio-extract.py
+# goodnotes_audio_extract.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.1.0
+# Version 1.1.1
 
 # Extract Goodnotes audio attachments, convert them to MP3, and write a CSV index.
-# Usage: python3 goodnotes-audio-extract.py --goodnotes Notes.goodnotes [options]
+# Usage: python3 goodnotes_audio_extract.py --goodnotes Notes.goodnotes [options]
 
 import argparse
 import csv

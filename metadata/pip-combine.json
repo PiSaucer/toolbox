@@ -1,9 +1,9 @@
 {
   "id": "pip-combine",
   "name": "PIP Combine",
-  "entry": "pip-combine.py",
-  "path": "scripts/pip-combine.py",
-  "version": "1.0.0",
+  "entry": "pip_combine.py",
+  "path": "scripts/pip_combine.py",
+  "version": "1.0.1",
   "author": "PiSaucer",
   "license": "MIT",
   "language": "python",
@@ -14,8 +14,8 @@
   "requirements": ["ffmpeg", "ffprobe"],
   "tags": ["Video", "Editing", "Overlay", "ffmpeg"],
   "usage": [
-    "./scripts/pip-combine.py --overlay overlay.mp4 --background background.mp4",
-    "./scripts/pip-combine.py -i overlay.mp4 -b background.mp4 -o output.mp4",
-    "./scripts/pip-combine.py --overlay cam.mp4 --background screen.mp4 --corner br --scale-rel 0.33"
+    "./scripts/pip_combine.py --overlay overlay.mp4 --background background.mp4",
+    "./scripts/pip_combine.py -i overlay.mp4 -b background.mp4 -o output.mp4",
+    "./scripts/pip_combine.py --overlay cam.mp4 --background screen.mp4 --corner br --scale-rel 0.33"
   ]
 }

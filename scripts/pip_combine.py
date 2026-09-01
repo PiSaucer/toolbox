@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# pip-combine.py
+# pip_combine.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.0.0
+# Version 1.0.1
 
 # Overlay an OVERLAY video on a BACKGROUND video with audio mix and smooth frame pacing
-# Usage: python3 pip-combine.py --overlay Overlay.mp4 --background Background.mp4 [options]
+# Usage: python3 pip_combine.py --overlay Overlay.mp4 --background Background.mp4 [options]
 
 import argparse
 import json
