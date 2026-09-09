@@ -2,7 +2,7 @@
 # install.sh
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.0.0
+# Version 1.1.0
 
 # Install the toolbox launcher and native zsh or bash command completion
 # Usage: ./install.sh [--prefix PATH] [--url URL] [--no-path-update]
@@ -82,57 +82,72 @@ while [ "$#" -gt 0 ]; do
 done
 
 # toolbox.py requires Python 3.9+ and installs its console dependency below.
-if ! command -v python3 >/dev/null 2>&1; then
+#
+# Prefer python3 when available, but Arch Linux and SteamOS commonly expose
+# Python as "python". Supporting both lets Toolbox work across Linux, macOS,
+# SteamOS, and other Unix-like systems.
+if command -v python3 >/dev/null 2>&1; then
+    system_python=$(command -v python3)
+elif command -v python >/dev/null 2>&1; then
+    system_python=$(command -v python)
+else
     printf "${RED}Error: Python 3.9 or newer is required.${NC}\n" >&2
     exit 1
 fi
-if ! python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 9))'; then
+
+if ! "$system_python" -c 'import sys; raise SystemExit(sys.version_info < (3, 9))'; then
     printf "${RED}Error: Python 3.9 or newer is required (found %s).${NC}\n" \
-        "$(python3 -c 'import platform; print(platform.python_version())')" >&2
+        "$("$system_python" -c 'import platform; print(platform.python_version())')" >&2
     exit 1
 fi
 
-# Check to see if pip is installed for Python 3. If not, print an error message and exit.
-if ! python3 -m pip --version >/dev/null 2>&1; then
-    printf "${RED}Error: pip is not installed for python3.${NC}\n" >&2
-    printf "Install pip for Python 3 and try again.\n" >&2
-    exit 1
-fi
-
-# Install Rich if it is not already available.
-if python3 -c 'import rich' >/dev/null 2>&1; then
-    printf "${GREEN}Rich is already installed.${NC}\n"
-else
-    rich_installed=0
-
-    # Prefer pip when Python allows normal user package installation.
-    if python3 -m pip --version >/dev/null 2>&1; then
-        externally_managed=$(
-            python3 -c '
+# Check to see if pip is installed for Python 3. If not, an externally managed
+# Python installation may still be supported by creating a virtual environment.
+#
+# PEP 668 systems such as Arch Linux and SteamOS intentionally prevent normal
+# pip --user installation into the distribution-managed Python environment.
+externally_managed=$(
+    "$system_python" -c '
 import pathlib
 import sysconfig
 
 stdlib = pathlib.Path(sysconfig.get_path("stdlib"))
 print("1" if (stdlib / "EXTERNALLY-MANAGED").exists() else "0")
 '
-        )
+)
 
-        if [ "$externally_managed" = "0" ]; then
-            printf "Installing Rich using pip...\n"
+# Python interpreter used to launch Toolbox.
+#
+# Normally this is the system Python. On externally managed systems where Rich
+# cannot be installed into the system environment, Toolbox uses its own private
+# virtual environment instead.
+toolbox_python="$system_python"
 
-            if python3 -m pip install --user "rich>=13.9,<15"; then
-                rich_installed=1
-                printf "${GREEN}Installed Rich using pip.${NC}\n"
-            fi
-        else
-            printf "Python is externally managed; skipping pip.\n"
+# Install Rich if it is not already available.
+if "$system_python" -c 'import rich' >/dev/null 2>&1; then
+    printf "${GREEN}Rich is already installed.${NC}\n"
+else
+    rich_installed=0
+
+    # Prefer pip when Python allows normal user package installation.
+    if [ "$externally_managed" = "0" ] && \
+       "$system_python" -m pip --version >/dev/null 2>&1; then
+        printf "Installing Rich using pip...\n"
+
+        if "$system_python" -m pip install --user "rich>=13.9,<15"; then
+            rich_installed=1
+            printf "${GREEN}Installed Rich using pip.${NC}\n"
         fi
+    elif [ "$externally_managed" = "1" ]; then
+        printf "Python is externally managed; skipping user pip installation.\n"
     else
         printf "pip is not available; trying the system package manager.\n"
     fi
 
     # Debian/Ubuntu and similar distributions use apt.
-    if [ "$rich_installed" -eq 0 ] && command -v apt >/dev/null 2>&1; then
+    if [ "$rich_installed" -eq 0 ] && \
+       [ "$externally_managed" = "0" ] && \
+       command -v apt >/dev/null 2>&1; then
         printf "Installing Rich using apt (python3-rich)...\n"
 
         if [ "$(id -u)" -eq 0 ]; then
@@ -146,8 +161,40 @@ print("1" if (stdlib / "EXTERNALLY-MANAGED").exists() else "0")
                 printf "${GREEN}Installed Rich using apt.${NC}\n"
             fi
         else
-            printf "${RED}Error: sudo is required to install python3-rich.${NC}\n" >&2
+            printf "${YELLOW}Warning: sudo is not available; skipping apt installation.${NC}\n" >&2
+        fi
+    fi
+
+    # Externally managed Python installations, including Arch Linux and
+    # SteamOS, should not be modified using --break-system-packages.
+    #
+    # Instead, create a private Toolbox virtual environment below ~/.local
+    # (or the selected prefix) and install Rich there.
+    if [ "$rich_installed" -eq 0 ] && [ "$externally_managed" = "1" ]; then
+        venv_dir="${prefix}/share/toolbox/venv"
+
+        printf "Creating Toolbox virtual environment at %s...\n" "$venv_dir"
+
+        if ! "$system_python" -m venv "$venv_dir"; then
+            printf "${RED}Error: Could not create the Toolbox virtual environment.${NC}\n" >&2
+            printf "Make sure Python virtual environment support is installed.${NC}\n" >&2
             exit 1
+        fi
+
+        toolbox_python="${venv_dir}/bin/python"
+
+        # venv normally bootstraps pip even when the system Python itself is
+        # externally managed because the virtual environment is isolated.
+        if ! "$toolbox_python" -m pip --version >/dev/null 2>&1; then
+            printf "${RED}Error: pip is unavailable inside the Toolbox virtual environment.${NC}\n" >&2
+            exit 1
+        fi
+
+        printf "Installing Rich into the Toolbox virtual environment...\n"
+
+        if "$toolbox_python" -m pip install "rich>=13.9,<15"; then
+            rich_installed=1
+            printf "${GREEN}Installed Rich into the Toolbox virtual environment.${NC}\n"
         fi
     fi
 
@@ -157,14 +204,17 @@ print("1" if (stdlib / "EXTERNALLY-MANAGED").exists() else "0")
     fi
 
     # Verify that Rich is importable by the Python used by Toolbox.
-    if ! python3 -c 'import rich' >/dev/null 2>&1; then
-        printf "${RED}Error: Rich was installed, but python3 cannot import it.${NC}\n" >&2
+    if ! "$toolbox_python" -c 'import rich' >/dev/null 2>&1; then
+        printf "${RED}Error: Rich was installed, but Toolbox cannot import it.${NC}\n" >&2
         exit 1
     fi
 fi
 
 install_dir="${prefix}/bin"
+data_dir="${prefix}/share/toolbox"
+toolbox_script="${data_dir}/toolbox.py"
 destination="${install_dir}/toolbox"
+
 # Prefer a checked-out toolbox.py; piped installers download the published copy
 local_source=""
 if [ "$url_selected" -eq 0 ] && [ -f "$0" ]; then
@@ -176,7 +226,9 @@ fi
 
 # Write to a temporary destination so a failed update preserves the old command
 mkdir -p "$install_dir"
-temporary=$(mktemp "${install_dir}/.toolbox.XXXXXX")
+mkdir -p "$data_dir"
+
+temporary=$(mktemp "${data_dir}/.toolbox.XXXXXX")
 
 if [ -n "$local_source" ]; then
     printf "Installing toolbox from %s\n" "$local_source"
@@ -187,7 +239,7 @@ if [ -n "$local_source" ]; then
     fi
 else
     printf "Downloading toolbox from %s\n" "$TOOLBOX_URL"
-    if ! python3 -c \
+    if ! "$system_python" -c \
         'import pathlib, sys, urllib.request; pathlib.Path(sys.argv[2]).write_bytes(urllib.request.urlopen(sys.argv[1]).read())' \
         "$TOOLBOX_URL" "$temporary"; then
         rm -f "$temporary"
@@ -197,20 +249,51 @@ else
 fi
 
 # Validate the Python source before atomically replacing the launcher
-if ! python3 -c \
+if ! "$toolbox_python" -c \
     'import pathlib, sys; source = pathlib.Path(sys.argv[1]).read_bytes(); compile(source, sys.argv[1], "exec")' \
     "$temporary"; then
     rm -f "$temporary"
     printf "${RED}Error: toolbox.py failed validation.${NC}\n" >&2
     exit 1
 fi
+
 if ! chmod 755 "$temporary"; then
     rm -f "$temporary"
     printf "${RED}Error: Could not make toolbox executable.${NC}\n" >&2
     exit 1
 fi
-if ! mv "$temporary" "$destination"; then
+
+if ! mv "$temporary" "$toolbox_script"; then
     rm -f "$temporary"
+    printf "${RED}Error: Could not install toolbox.py to %s.${NC}\n" \
+        "$toolbox_script" >&2
+    exit 1
+fi
+
+# Install a small launcher instead of executing toolbox.py directly.
+#
+# This allows externally managed systems such as SteamOS to launch Toolbox
+# using its private virtual environment while normal systems continue using
+# their existing Python installation.
+launcher_temporary=$(mktemp "${install_dir}/.toolbox-launcher.XXXXXX")
+
+if ! {
+    printf '%s\n' '#!/bin/sh'
+    printf 'exec "%s" "%s" "$@"\n' "$toolbox_python" "$toolbox_script"
+} > "$launcher_temporary"; then
+    rm -f "$launcher_temporary"
+    printf "${RED}Error: Could not create the Toolbox launcher.${NC}\n" >&2
+    exit 1
+fi
+
+if ! chmod 755 "$launcher_temporary"; then
+    rm -f "$launcher_temporary"
+    printf "${RED}Error: Could not make the Toolbox launcher executable.${NC}\n" >&2
+    exit 1
+fi
+
+if ! mv "$launcher_temporary" "$destination"; then
+    rm -f "$launcher_temporary"
     printf "${RED}Error: Could not install toolbox to %s.${NC}\n" "$destination" >&2
     exit 1
 fi
@@ -225,7 +308,9 @@ case ":${PATH}:" in
             shell_name=$(basename "${SHELL:-}")
             os_name=$(uname -s 2>/dev/null || printf unknown)
             case "$shell_name" in
-                zsh) profile="${ZDOTDIR:-$HOME}/.zprofile" ;;
+                zsh)
+                    profile="${ZDOTDIR:-$HOME}/.zprofile"
+                    ;;
                 bash)
                     if [ "$os_name" = "Darwin" ]; then
                         profile="$HOME/.bash_profile"
@@ -233,7 +318,9 @@ case ":${PATH}:" in
                         profile="$HOME/.bashrc"
                     fi
                     ;;
-                *) profile="$HOME/.profile" ;;
+                *)
+                    profile="$HOME/.profile"
+                    ;;
             esac
             path_line='export PATH="$HOME/.local/bin:$PATH"'
             if [ ! -f "$profile" ] || ! grep -Fqx "$path_line" "$profile"; then
@@ -297,14 +384,23 @@ case "$shell_name" in
 esac
 
 printf "${GREEN}Installed toolbox to %s${NC}\n" "$destination"
+
+if [ "$externally_managed" = "1" ] && \
+   [ "$toolbox_python" != "$system_python" ]; then
+    printf "${GREEN}Toolbox Python environment: %s${NC}\n" \
+        "${prefix}/share/toolbox/venv"
+fi
+
 if [ "$path_updated" -eq 1 ]; then
     echo "Added ~/.local/bin to PATH."
 elif ! command -v toolbox >/dev/null 2>&1; then
     echo "Add $install_dir to PATH to run toolbox from anywhere."
 fi
+
 if [ "$completion_installed" -eq 1 ]; then
     printf "${GREEN}Installed %s completion.${NC}\n" "$shell_name"
 fi
+
 if [ "$path_updated" -eq 1 ] || [ "$completion_installed" -eq 1 ]; then
     echo "Restart your shell to activate it, or run:"
     if [ "$shell_name" = "zsh" ]; then
