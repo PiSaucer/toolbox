@@ -1,0 +1,22 @@
+{
+  "id": "pdf-extract-images",
+  "name": "PDF Image Extractor",
+  "entry": "pdf_extract_images.py",
+  "path": "scripts/pdf_extract_images.py",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "python",
+  "category": "images",
+  "platforms": ["Linux", "MacOS", "Windows"],
+  "description": "Extract embedded images from PDF files and remove exact duplicates.",
+  "long_description": "Uses Poppler's pdfimages utility to preserve supported embedded image formats, then compares SHA-256 hashes and removes byte-for-byte duplicates. Supports custom output directories, duplicate-reporting dry runs, paths containing spaces, and locating pdfimages beside the script or on PATH across Linux, macOS, and Windows.",
+  "requirements": ["Python 3.9+", "Poppler (pdfimages)"],
+  "tags": ["PDF", "Images", "Poppler", "Extract", "Deduplicate"],
+  "usage": [
+    "python3 ./scripts/pdf_extract_images.py document.pdf",
+    "python3 ./scripts/pdf_extract_images.py document.pdf --output ./images",
+    "python3 ./scripts/pdf_extract_images.py \"My Document.pdf\" --dry-run",
+    "py .\\scripts\\pdf_extract_images.py document.pdf -o .\\images"
+  ]
+}
