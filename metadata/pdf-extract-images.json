@@ -11,7 +11,7 @@
   "platforms": ["Linux", "MacOS", "Windows"],
   "description": "Extract embedded images from PDF files and remove exact duplicates.",
   "long_description": "Uses Poppler's pdfimages utility to preserve supported embedded image formats, then compares SHA-256 hashes and removes byte-for-byte duplicates. Supports custom output directories, duplicate-reporting dry runs, paths containing spaces, and locating pdfimages beside the script or on PATH across Linux, macOS, and Windows.",
-  "requirements": ["Python 3.9+", "Poppler (pdfimages)"],
+  "requirements": ["Python 3.9+", "pdfimages"],
   "tags": ["PDF", "Images", "Poppler", "Extract", "Deduplicate"],
   "usage": [
     "python3 ./scripts/pdf_extract_images.py document.pdf",
