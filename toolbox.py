@@ -1484,12 +1484,16 @@ def script_commit(script: dict[str, Any]) -> str:
                     return sha.lower()
     raise RuntimeError("selected script is missing an immutable Git commit hash")
 
-def system_tool_records(scripts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def system_tool_records(
+    scripts: list[dict[str, Any]], search_directory: Optional[Path] = None
+) -> list[dict[str, Any]]:
     """Detect script-declared host commands and return reproducibility records.
 
     Args:
         scripts: Resolved manifest entries whose ``requirements`` are commands
             or supported runtime requirements such as ``Python 3.9+``.
+        search_directory: Optional directory containing portable executables
+            stored beside downloaded scripts. It is searched before ``PATH``.
 
     Returns:
         Stable system-tool records including path, detected version, and users.
@@ -1528,7 +1532,12 @@ def system_tool_records(scripts: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "required_by": sorted(required_by[name], key=str.casefold),
             })
             continue
-        executable = shutil.which(name)
+        # Project-local tools support portable bundles, including a
+        # pdfimages.exe placed beside pdf_extract_images.py on Windows.
+        search_path = os.environ.get("PATH", "")
+        if search_directory is not None:
+            search_path = os.pathsep.join((str(search_directory), search_path))
+        executable = shutil.which(name, path=search_path)
         if executable is None:
             joined = ", ".join(sorted(required_by[name], key=str.casefold))
             raise RuntimeError(f"Missing required system tool: {name}\nRequired by: {joined}")
@@ -1617,7 +1626,9 @@ def install_project_dependencies(toolfile: Path, manifest: dict[str, Any], outpu
             download_script(script, output_dir)
         resolved_entries.append(entry)
         resolved_scripts.append(script)
-    records = system_tool_records(resolved_scripts)
+    # Dependencies may be portable executables stored beside downloaded scripts
+    # rather than globally installed commands available on PATH.
+    records = system_tool_records(resolved_scripts, search_directory=output_dir)
     if compatible_lock:
         previous_tools = {
             item.get("name"): item for item in compatible_lock.get("system_tools", [])
