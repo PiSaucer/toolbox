@@ -212,3 +212,4 @@ __marimo__/
 *.tar.gz
 toolfile.lock
 toolfile
+.local-release-venv/

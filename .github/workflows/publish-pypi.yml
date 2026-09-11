@@ -43,3 +43,46 @@ jobs:
 
       - name: Publish distributions
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  windows-executable:
+    name: Build Windows executable
+    needs: publish
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out the release
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate release version
+        shell: pwsh
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ($env:TAG -notmatch '^v(\d+\.\d+\.\d+)$') {
+            throw 'Release tag must use the vMAJOR.MINOR.PATCH format.'
+          }
+          $sourceVersion = python -c "import toolbox; print(toolbox.__version__)"
+          if ($sourceVersion -ne $Matches[1]) {
+            throw "Tag version $($Matches[1]) does not match toolbox.py version $sourceVersion."
+          }
+
+      - name: Build executable
+        run: |
+          python -m pip install --upgrade pyinstaller .
+          pyinstaller --clean --onefile --name toolbox-windows-x64 toolbox.py
+          .\dist\toolbox-windows-x64.exe --version
+
+      - name: Add executable to GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload $env:TAG dist/toolbox-windows-x64.exe --clobber

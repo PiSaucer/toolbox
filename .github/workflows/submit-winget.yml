@@ -1,0 +1,57 @@
+name: Submit to WinGet
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Released version (without the v prefix)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    name: Submit community manifest
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download release executable
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:VERSION -notmatch '^\d+\.\d+\.\d+$') {
+            throw 'Version must use the MAJOR.MINOR.PATCH format.'
+          }
+          gh release download "v$env:VERSION" --pattern toolbox-windows-x64.exe --dir release
+
+      - name: Generate manifests
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $asset = Resolve-Path release/toolbox-windows-x64.exe
+          $hash = (Get-FileHash -Algorithm SHA256 $asset).Hash
+          $url = "https://github.com/PiSaucer/toolbox/releases/download/v$env:VERSION/toolbox-windows-x64.exe"
+          ./tools/New-WinGetManifest.ps1 -Version $env:VERSION -InstallerSha256 $hash -InstallerUrl $url -OutputDirectory winget-manifests
+
+      - name: Download WinGet Manifest Creator
+        shell: pwsh
+        run: Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+
+      - name: Submit manifest pull request
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINGET_TOKEN)) {
+            throw 'Add a WINGET_TOKEN repository secret before running this workflow.'
+          }
+          ./wingetcreate.exe submit --prtitle "New version: PiSaucer.Toolbox version $env:VERSION" --token $env:WINGET_TOKEN --no-open winget-manifests
