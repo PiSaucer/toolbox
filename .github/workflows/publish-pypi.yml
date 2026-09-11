@@ -69,9 +69,17 @@ jobs:
           if ($env:TAG -notmatch '^v(\d+\.\d+\.\d+)$') {
             throw 'Release tag must use the vMAJOR.MINOR.PATCH format.'
           }
-          $sourceVersion = python -c "import toolbox; print(toolbox.__version__)"
-          if ($sourceVersion -ne $Matches[1]) {
-            throw "Tag version $($Matches[1]) does not match toolbox.py version $sourceVersion."
+          $tagVersion = $Matches[1]
+          $versionMatch = [regex]::Match(
+            (Get-Content -Raw -LiteralPath toolbox.py),
+            '(?m)^__version__\s*=\s*"(\d+\.\d+\.\d+)"\s*$'
+          )
+          if (-not $versionMatch.Success) {
+            throw 'Could not read __version__ from toolbox.py.'
+          }
+          $sourceVersion = $versionMatch.Groups[1].Value
+          if ($sourceVersion -ne $tagVersion) {
+            throw "Tag version $tagVersion does not match toolbox.py version $sourceVersion."
           }
 
       - name: Build executable
