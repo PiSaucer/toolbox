@@ -3,7 +3,7 @@
   "name": "Whisper Transcriber",
   "entry": "whisper_transcribe.py",
   "path": "scripts/whisper_transcribe.py",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "PiSaucer",
   "license": "MIT",
   "language": "python",
@@ -27,7 +27,7 @@
   "usage": [
     "python3 whisper_transcribe.py ./recordings",
     "python3 whisper_transcribe.py ./recordings --model large-v3",
-    "python3 whisper_transcribe.py ./recordings --language en --output-format txt",
+    "python3 whisper_transcribe.py ./recordings --language en --output_format txt",
     "python3 whisper_transcribe.py ./recordings --formats mp3,m4a,wav --dry-run"
   ]
 }

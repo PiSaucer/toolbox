@@ -2,7 +2,7 @@
 # whisper_transcribe.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.0.0
+# Version 1.0.1
 
 # Find audio files without Whisper transcripts and transcribe the missing files.
 # Usage: python3 whisper_transcribe.py DIRECTORY [options]
@@ -15,7 +15,7 @@ from typing import List, Set, Optional
 # Required package: python3 -m pip install openai-whisper
 import whisper
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 DEFAULT_FORMATS = {
     ".aac",
@@ -34,6 +34,7 @@ OUTPUT_FORMATS = (
     "tsv",
     "json",
 )
+ALL_FORMATS = "all"
 
 def parse_formats(value: str) -> Set[str]:
     """Parse a comma-separated list of audio file extensions.
@@ -103,6 +104,11 @@ def transcript_path(audio_file: Path, output_format: str, output_dir: Optional[P
         return output_dir / filename
     return audio_file.parent / filename
 
+def transcript_paths(audio_file: Path, output_format: str, output_dir: Optional[Path] = None) -> List[Path]:
+    """Return the expected transcript path(s) for a Whisper output format."""
+    formats = OUTPUT_FORMATS if output_format == ALL_FORMATS else (output_format,)
+    return [transcript_path(audio_file, fmt, output_dir) for fmt in formats]
+
 def find_missing_transcripts(audio_files: List[Path], output_format: str, output_dir: Optional[Path] = None) -> List[Path]:
     """Find audio files whose expected transcript does not exist.
 
@@ -117,7 +123,7 @@ def find_missing_transcripts(audio_files: List[Path], output_format: str, output
     return [
         audio_file
         for audio_file in audio_files
-        if not transcript_path(audio_file, output_format, output_dir).is_file()
+        if not all(path.is_file() for path in transcript_paths(audio_file, output_format, output_dir))
     ]
 
 def transcribe_audio(
@@ -191,9 +197,11 @@ def parse_args() -> argparse.Namespace:
         help="transcript output directory (default: beside each audio file)",
     )
     parser.add_argument(
+        "--output_format",
         "--output-format",
-        choices=OUTPUT_FORMATS,
-        default="all",
+        dest="output_format",
+        choices=(*OUTPUT_FORMATS, ALL_FORMATS),
+        default=ALL_FORMATS,
         help="Whisper output format (default: all)",
     )
     parser.add_argument(
