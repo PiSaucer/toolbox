@@ -2,7 +2,7 @@
 # srt_to_txt.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.0.1
+# Version 1.0.2
 
 # Convert an SRT subtitle file to plain UTF-8 text.
 # Usage: python3 srt_to_txt.py INPUT.srt [OUTPUT.txt]
@@ -11,6 +11,8 @@ import argparse
 import re
 import sys
 from pathlib import Path
+
+VERSION = "1.0.2"
 
 # Match an SRT time range, including optional positioning information.
 TIMECODE_RE = re.compile(
@@ -100,6 +102,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Convert an SRT subtitle file to plain UTF-8 text."
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     parser.add_argument("srt_file", type=Path, help="Input .srt subtitle file")
     parser.add_argument(
         "output_file",

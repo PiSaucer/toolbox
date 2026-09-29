@@ -2,7 +2,7 @@
 # pip_combine.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.0.1
+# Version 1.0.2
 
 # Overlay an OVERLAY video on a BACKGROUND video with audio mix and smooth frame pacing
 # Usage: python3 pip_combine.py --overlay Overlay.mp4 --background Background.mp4 [options]
@@ -13,6 +13,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+VERSION = "1.0.2"
 
 CORNER_CHOICES = {
     "tl": ("0", "0"),
@@ -299,6 +301,7 @@ def main():
         ValueError: If an interactive or sizing value is invalid.
     """
     parser = argparse.ArgumentParser(description="Overlay an OVERLAY video on a BACKGROUND video with audio mix and smooth frame pacing.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     parser.add_argument("--overlay", "-i", help="Path to overlay picture-in-picture video.")
     parser.add_argument("--background", "-b", help="Path to background main video.")
     parser.add_argument("--corner", "-c", choices=CORNER_CHOICES.keys(), default="tr", help="Corner: tl, tr, bl, br. Default: tr.")
