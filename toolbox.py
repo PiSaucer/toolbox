@@ -301,15 +301,21 @@ def download_script(script: dict[str, Any], output_dir: Path) -> Path:
                 f"(expected {expected_sha256}, got {actual_sha256})"
             )
 
-        # Make verified downloads directly runnable on Linux and other POSIX
-        # systems. Apply the mode before publishing so the destination never
-        # appears in a partially configured state.
+        # NamedTemporaryFile creates files with mode 0600. Make the verified
+        # file executable before publishing it so an incomplete mode is never
+        # visible at the destination.
         if os.name == "posix":
             temporary_path.chmod(temporary_path.stat().st_mode | 0o111)
 
         # Publish only fully downloaded content whose checksum has been verified.
         os.replace(temporary_path, destination)
         temporary_path = None
+
+        # Apply the mode to the final path too. This is the path promised to the
+        # caller and avoids relying on rename preserving temporary-file modes.
+        if os.name == "posix":
+            destination.chmod(destination.stat().st_mode | 0o111)
+
         return destination
     finally:
         if temporary_path is not None:
