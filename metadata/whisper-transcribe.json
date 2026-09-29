@@ -13,7 +13,7 @@
   "long_description": "Recursively scans a directory for supported audio files, skips files that already have a matching Whisper transcript, loads the selected Whisper model once, and transcribes only unfinished recordings. Supports TXT, VTT, SRT, TSV, and JSON output, optional language selection, custom audio extensions, dry-run mode, and a shared output directory.",
   "requirements": [
     "Python 3.9+",
-    "openai-whisper",
+    "Python package: openai-whisper",
     "ffmpeg"
   ],
   "tags": [

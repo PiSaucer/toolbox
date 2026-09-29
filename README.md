@@ -82,6 +82,12 @@ pipx install .
 
 ## Toolfile
 
+Scripts may declare Python packages as well as host commands. For example, `whisper-transcribe` requires:
+
+```bash
+python3 -m pip install openai-whisper
+```
+
 Toolbox projects can use a human-maintained `Toolfile` to declare the scripts they need.
 
 ```text

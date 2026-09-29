@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import List, Set, Optional
 
-# Required package: pip install whisper
+# Required package: python3 -m pip install openai-whisper
 import whisper
 
 VERSION = "1.0.0"

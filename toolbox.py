@@ -9,6 +9,7 @@ import sys
 import argparse
 import curses
 import hashlib
+from importlib import metadata as importlib_metadata
 import json
 import os
 import platform
@@ -1517,6 +1518,22 @@ def system_tool_records(
                 required_by.setdefault(requirement.strip(), []).append(canonical_dependency(script))
     records: list[dict[str, Any]] = []
     for name in sorted(required_by, key=str.casefold):
+        package_requirement = re.fullmatch(r"Python package:\s*(\S+)", name, re.IGNORECASE)
+        if package_requirement:
+            package_name = package_requirement.group(1)
+            try:
+                installed_version = importlib_metadata.version(package_name)
+            except importlib_metadata.PackageNotFoundError:
+                joined = ", ".join(sorted(required_by[name], key=str.casefold))
+                raise RuntimeError(
+                    f"Missing required Python package: {package_name}\n"
+                    f"Install with: {sys.executable} -m pip install {package_name}\n"
+                    f"Required by: {joined}"
+                ) from None
+            records.append({"name": name, "path": sys.executable,
+                            "version": installed_version,
+                            "required_by": sorted(required_by[name], key=str.casefold)})
+            continue
         python_requirement = re.fullmatch(
             r"python\s+(\d+(?:\.\d+)*)\+", name, re.IGNORECASE
         )
