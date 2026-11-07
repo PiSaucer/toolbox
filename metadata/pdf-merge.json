@@ -1,0 +1,21 @@
+{
+  "id": "pdf-merge",
+  "name": "PDF Merge",
+  "entry": "pdf_merge.py",
+  "path": "scripts/pdf_merge.py",
+  "version": "1.0.0",
+  "author": "PiSaucer",
+  "license": "MIT",
+  "language": "python",
+  "category": "pdf",
+  "platforms": ["Linux", "MacOS", "Windows"],
+  "description": "Merge PDF files into one document in the specified order.",
+  "long_description": "Uses Poppler's pdfunite utility to merge two or more PDF files. Accepts paths as command-line arguments or one filename per line from standard input, including paths containing spaces. Requires an output filename and refuses to overwrite existing files.",
+  "requirements": ["Python 3.9+", "pdfunite"],
+  "tags": ["PDF", "Merge", "Poppler"],
+  "usage": [
+    "python3 ./scripts/pdf_merge.py -o merged.pdf first.pdf second.pdf",
+    "cat filenames.txt | python3 ./scripts/pdf_merge.py -o merged.pdf",
+    "python3 ./scripts/pdf_merge.py -o merged.pdf < filenames.txt"
+  ]
+}

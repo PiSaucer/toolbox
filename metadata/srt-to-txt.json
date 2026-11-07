@@ -3,7 +3,7 @@
   "name": "SRT to TXT",
   "entry": "srt_to_txt.py",
   "path": "scripts/srt_to_txt.py",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "PiSaucer",
   "license": "MIT",
   "language": "python",

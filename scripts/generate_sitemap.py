@@ -2,7 +2,7 @@
 # generate_sitemap.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.2.0
+# Version 1.2.1
 
 # Generate a sitemap.xml file from HTML files below a website root.
 # Usage: python3 generate_sitemap.py --root SITE_DIR --base-url https://example.com/
@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote, urljoin, urlparse
 from xml.sax.saxutils import escape
+
+VERSION = "1.2.1"
 
 def find_html_files(root: Path) -> list[Path]:
     """Find HTML files recursively below a website root.
@@ -174,6 +176,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate sitemap.xml from HTML files."
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     parser.add_argument(
         "--root",
         type=Path,

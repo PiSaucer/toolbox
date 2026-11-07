@@ -2,7 +2,7 @@
 # goodnotes_audio_extract.py
 # Copyright (c) 2026 PiSaucer
 # Licensed under the MIT License
-# Version 1.1.1
+# Version 1.1.2
 
 # Extract Goodnotes audio attachments, convert them to MP3, and write a CSV index.
 # Usage: python3 goodnotes_audio_extract.py --goodnotes Notes.goodnotes [options]
@@ -18,6 +18,8 @@ import zipfile
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Optional, List, Tuple, Dict
+
+VERSION = "1.1.2"
 
 def require_command(name: str) -> str:
     """Locate a required executable on ``PATH``.
@@ -461,6 +463,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Extract audio attachments from a Goodnotes file as MP3s."
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     parser.add_argument(
         "-g", "--goodnotes", required=True, type=Path, help="Input .goodnotes file"
     )

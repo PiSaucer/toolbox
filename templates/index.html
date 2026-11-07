@@ -57,16 +57,16 @@
 
         <div class="tab-content download-tab-content">
           <div class="tab-pane fade show active" id="run-curl-panel" role="tabpanel" aria-labelledby="run-curl-tab" tabindex="0">
-            <pre class="p-3 mb-0"><code class="language-bash">python3 &lt;(curl -fsSL {{launcher_url}})</code></pre>
+            <pre class="p-3 mb-0"><code class="language-bash" data-python-command>python3 &lt;(curl -fsSL {{launcher_url}})</code></pre>
           </div>
           <div class="tab-pane fade" id="run-wget-panel" role="tabpanel" aria-labelledby="run-wget-tab" tabindex="0">
-            <pre class="p-3 mb-0"><code class="language-bash">python3 &lt;(wget -qO- {{launcher_url}})</code></pre>
+            <pre class="p-3 mb-0"><code class="language-bash" data-python-command>python3 &lt;(wget -qO- {{launcher_url}})</code></pre>
           </div>
           <div class="tab-pane fade" id="run-powershell-panel" role="tabpanel" aria-labelledby="run-powershell-tab" tabindex="0">
             <pre class="p-3 mb-0"><code class="language-powershell">python -c (Invoke-WebRequest -Uri "{{launcher_url}}").Content</code></pre>
           </div>
           <div class="tab-pane fade" id="run-python-panel" role="tabpanel" aria-labelledby="run-python-tab" tabindex="0">
-            <pre class="p-3 mb-0"><code class="language-bash">python3 -c 'import urllib.request; exec(urllib.request.urlopen("{{launcher_url}}").read())'</code></pre>
+            <pre class="p-3 mb-0"><code class="language-bash" data-python-command>python3 -c 'import urllib.request; exec(urllib.request.urlopen("{{launcher_url}}").read())'</code></pre>
           </div>
         </div>
 

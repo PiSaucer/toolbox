@@ -88,6 +88,12 @@ const osName = (() => {
   return '';
 })();
 const osLabels = { macos: 'macOS detected', linux: 'Linux detected', windows: 'Windows detected' };
+const pythonCommand = osName === 'windows' ? 'python' : 'python3';
+for (const element of document.querySelectorAll('[data-python-command]')) {
+  // Metadata may use either spelling; show the command that works by default
+  // on the visitor's platform, including when the snippet is copied.
+  element.textContent = (element.textContent || '').replace(/\bpython3?\b/g, pythonCommand);
+}
 const detectedOsTab = osName ? document.querySelector(`[data-os-tab="${osName}"]`) : null;
 if (detectedOsBadge) detectedOsBadge.textContent = osLabels[osName] || 'Choose your OS';
 if (detectedOsTab && window.bootstrap && window.bootstrap.Tab) {

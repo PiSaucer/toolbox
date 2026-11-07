@@ -3,7 +3,7 @@
   "name": "Goodnotes Audio Extractor",
   "entry": "goodnotes_audio_extract.py",
   "path": "scripts/goodnotes_audio_extract.py",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": "PiSaucer",
   "license": "MIT",
   "language": "python",

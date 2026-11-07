@@ -32,7 +32,7 @@
       <section class="card shadow-sm border-0 mb-4">
         <div class="card-body p-4">
           <h2 class="h5 mb-3"><i class="bi bi-terminal me-2 text-primary" aria-hidden="true"></i>Usage</h2>
-          <pre class="rounded-3 p-3 mb-0"><code class="{{script_language}}">{{usage}}</code></pre>
+          <pre class="rounded-3 p-3 mb-0"><code class="{{script_language}}" data-python-command>{{usage}}</code></pre>
         </div>
       </section>
 
@@ -83,7 +83,7 @@
               <pre class="p-3 mb-0"><code id="powershell-command" class="language-powershell">{{powershell_command}}</code></pre>
             </div>
             <div class="tab-pane fade" id="python-panel" role="tabpanel" aria-labelledby="python-tab" tabindex="0">
-              <pre class="p-3 mb-0"><code id="python-command" class="language-bash">{{python_command}}</code></pre>
+              <pre class="p-3 mb-0"><code id="python-command" class="language-bash" data-python-command>{{python_command}}</code></pre>
             </div>
           </div>
 

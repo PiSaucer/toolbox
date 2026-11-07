@@ -9,6 +9,7 @@ import sys
 import argparse
 import curses
 import hashlib
+from importlib import metadata as importlib_metadata
 import json
 import os
 import platform
@@ -301,15 +302,21 @@ def download_script(script: dict[str, Any], output_dir: Path) -> Path:
                 f"(expected {expected_sha256}, got {actual_sha256})"
             )
 
-        # Make verified downloads directly runnable on Linux and other POSIX
-        # systems. Apply the mode before publishing so the destination never
-        # appears in a partially configured state.
+        # NamedTemporaryFile creates files with mode 0600. Make the verified
+        # file executable before publishing it so an incomplete mode is never
+        # visible at the destination.
         if os.name == "posix":
             temporary_path.chmod(temporary_path.stat().st_mode | 0o111)
 
         # Publish only fully downloaded content whose checksum has been verified.
         os.replace(temporary_path, destination)
         temporary_path = None
+
+        # Apply the mode to the final path too. This is the path promised to the
+        # caller and avoids relying on rename preserving temporary-file modes.
+        if os.name == "posix":
+            destination.chmod(destination.stat().st_mode | 0o111)
+
         return destination
     finally:
         if temporary_path is not None:
@@ -1511,6 +1518,22 @@ def system_tool_records(
                 required_by.setdefault(requirement.strip(), []).append(canonical_dependency(script))
     records: list[dict[str, Any]] = []
     for name in sorted(required_by, key=str.casefold):
+        package_requirement = re.fullmatch(r"Python package:\s*(\S+)", name, re.IGNORECASE)
+        if package_requirement:
+            package_name = package_requirement.group(1)
+            try:
+                installed_version = importlib_metadata.version(package_name)
+            except importlib_metadata.PackageNotFoundError:
+                joined = ", ".join(sorted(required_by[name], key=str.casefold))
+                raise RuntimeError(
+                    f"Missing required Python package: {package_name}\n"
+                    f"Install with: {sys.executable} -m pip install {package_name}\n"
+                    f"Required by: {joined}"
+                ) from None
+            records.append({"name": name, "path": sys.executable,
+                            "version": installed_version,
+                            "required_by": sorted(required_by[name], key=str.casefold)})
+            continue
         python_requirement = re.fullmatch(
             r"python\s+(\d+(?:\.\d+)*)\+", name, re.IGNORECASE
         )

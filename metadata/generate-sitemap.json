@@ -3,7 +3,7 @@
   "name": "Sitemap Generator",
   "entry": "generate_sitemap.py",
   "path": "scripts/generate_sitemap.py",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "PiSaucer",
   "license": "MIT",
   "language": "python",
