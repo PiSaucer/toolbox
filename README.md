@@ -25,6 +25,12 @@ My personal toolbox of utility scripts
 
 ## Install
 
+### WinGet (Windows)
+
+```powershell
+winget install --id PiSaucer.Toolbox --exact
+```
+
 ### Homebrew (macOS)
 
 On macOS, install with Homebrew:
