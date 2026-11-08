@@ -107,6 +107,7 @@
             </li>
             <li class="nav-item" role="presentation">
               <!-- <button class="nav-link" id="installer-windows-tab" data-bs-toggle="tab" data-bs-target="#installer-windows-panel" data-os-tab="windows" type="button" role="tab" aria-controls="installer-windows-panel" aria-selected="false"><i class="bi bi-windows me-1" aria-hidden="true"></i>PowerShell</button> -->
+              <button class="nav-link" id="installer-windows-tab" data-bs-toggle="tab" data-bs-target="#installer-windows-panel" data-os-tab="windows" type="button" role="tab" aria-controls="installer-windows-panel" aria-selected="false"><i class="bi bi-windows me-1" aria-hidden="true"></i>winget</button>
             </li>
           </ul>
           <button type="button" class="btn btn-sm btn-outline-primary mb-2" data-copy-active-tab data-tab-list="#installerTabs"><i class="bi bi-clipboard2-fill me-1" aria-hidden="true"></i>Copy command</button>
@@ -123,7 +124,8 @@
             <pre class="p-3 mb-0"><code class="language-bash">pip install pisaucer-toolbox</code></pre>
           </div>
           <div class="tab-pane fade" id="installer-windows-panel" role="tabpanel" aria-labelledby="installer-windows-tab" tabindex="0">
-            <pre class="p-3 mb-0"><code class="language-powershell">irm {{install_ps1_url}} | iex</code></pre>
+            <!-- <pre class="p-3 mb-0"><code class="language-powershell">irm {{install_ps1_url}} | iex</code></pre> -->
+            <pre class="p-3 mb-0"><code class="language-powershell">winget install --id PiSaucer.Toolbox --exact</code></pre>
           </div>
         </div>
       </div>
