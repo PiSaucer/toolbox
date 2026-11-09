@@ -7,28 +7,16 @@
 
 import sys
 import argparse
-import curses
-import hashlib
-from importlib import metadata as importlib_metadata
 import json
 import os
-import platform
 import re
-import shlex
-import shutil
-import subprocess
-import tempfile
-import textwrap
 import time
-import urllib.error
-import urllib.request
-from email.utils import parsedate_to_datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 from urllib.parse import quote, unquote, urlparse
 
-from rich.console import Console
-from rich.text import Text
+if TYPE_CHECKING:
+    import curses
 
 __version__ = "1.0.13"
 DEFAULT_URL = "https://pisaucer.github.io/toolbox/manifest.json"
@@ -46,8 +34,6 @@ TOOLBOX_ART = [
     "| || (_) | (_) | | |_) | (_) >  < ",
     " \\__\\___/ \\___/|_|_.__/ \\___/_/\\_\\",
 ]
-console = Console(highlight=False)
-error_console = Console(stderr=True, highlight=False)
 
 def installation_source(module_path: Optional[Path] = None) -> str:
     """Describe how the running copy of toolbox was installed.
@@ -99,6 +85,8 @@ def version_text(
     Returns:
         Version text containing the install source and resolved location.
     """
+    import platform
+
     path = (module_path or Path(__file__)).expanduser().resolve()
     source = installation_source(path)
     return (
@@ -117,6 +105,8 @@ def version_tuple(version: str) -> tuple[int, int, int]:
 
 def fetch_latest_version() -> str:
     """Return the version from the latest GitHub release."""
+    import urllib.request
+
     request = urllib.request.Request(
         LATEST_RELEASE_URL,
         headers={
@@ -179,6 +169,41 @@ def version_text_with_update(
         pass
     return text
 
+def print_plain(message: str, *, color: str = "", stream: Any = None, end: str = "\n") -> None:
+    """Print literal CLI text, with ANSI color only when the stream supports it."""
+    output = sys.stdout if stream is None else stream
+    use_color = (
+        "NO_COLOR" not in os.environ
+        and os.environ.get("TERM") != "dumb"
+        and (bool(os.environ.get("FORCE_COLOR")) or output.isatty())
+    )
+    colors = {"cyan": "36", "yellow": "33", "red": "31"}
+    if use_color and os.name == "nt" and output.isatty():
+        # Enable ANSI escape processing for a native Windows console. Redirected
+        # streams and terminals that already process ANSI need no setup.
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+
+        try:
+            handle = wintypes.HANDLE(msvcrt.get_osfhandle(output.fileno()))
+            mode = wintypes.DWORD()
+            kernel32 = ctypes.windll.kernel32
+            if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+                use_color = bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))
+        except (OSError, ValueError):
+            use_color = False
+    if use_color and color in colors:
+        message = f"\033[{colors[color]}m{message}\033[0m"
+    print(message, file=output, end=end)
+
+class PlainArgumentParser(argparse.ArgumentParser):
+    """Keep help, usage, and argument errors independent of Rich."""
+
+    def _print_message(self, message: str, file: Any = None) -> None:
+        if message:
+            print_plain(message, color="cyan", stream=file or sys.stderr, end="")
+
 class VersionAction(argparse.Action):
     """Print version information, checking for an update only on demand."""
 
@@ -192,10 +217,13 @@ class VersionAction(argparse.Action):
         values: Any,
         option_string: Optional[str] = None,
     ) -> None:
-        parser.exit(message=version_text_with_update(parser.prog) + "\n")
+        print_plain(version_text_with_update(parser.prog), stream=sys.stderr)
+        parser.exit()
 
 def manifest_cache_path(url: str) -> Path:
     """Return a per-user cache filename keyed by the complete manifest URL."""
+    import hashlib
+
     if os.name == "nt":
         root = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
     elif sys.platform == "darwin":
@@ -206,6 +234,8 @@ def manifest_cache_path(url: str) -> Path:
 
 def manifest_cache_lifetime(headers: dict[str, str], now: float) -> float:
     """Limit freshness to ten minutes, respecting server age and directives."""
+    from email.utils import parsedate_to_datetime
+
     directives = {
         key.strip().lower(): value.strip().strip('"')
         for part in headers.get("cache-control", "").split(",")
@@ -224,6 +254,8 @@ def manifest_cache_lifetime(headers: dict[str, str], now: float) -> float:
 
 def save_manifest_cache(path: Path, entry: dict[str, Any]) -> None:
     """Atomically save a cache entry; caching failures must not break fetching."""
+    import tempfile
+
     temporary_path = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -275,6 +307,9 @@ def fetch_manifest(url: str, refresh: bool = False) -> dict[str, Any]:
     now = time.time()
     if cached and not refresh and cached["stored_at"] <= now < cached["expires_at"]:
         return cached["manifest"]
+
+    import urllib.error
+    import urllib.request
 
     headers = {"User-Agent": f"toolbox-tui/{__version__}", "Accept": "application/json"}
     if cached:
@@ -360,6 +395,10 @@ def download_script(script: dict[str, Any], output_dir: Path) -> Path:
         RuntimeError: If metadata is invalid, the response status is not 200,
             or checksum verification fails.
     """
+    import hashlib
+    import tempfile
+    import urllib.request
+
     download_url, expected_sha256, filename = script_download_details(script)
     output_dir = output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -431,6 +470,9 @@ def fetch_verified_script(script: dict[str, Any]) -> tuple[bytes, str]:
         RuntimeError: If metadata is invalid, the response status is not 200,
             or checksum verification fails.
     """
+    import hashlib
+    import urllib.request
+
     download_url, expected_sha256, filename = script_download_details(script)
     request = urllib.request.Request(
         download_url,
@@ -583,6 +625,8 @@ def parse_tui_command(command: str) -> tuple[str, list[str]]:
         ValueError: If tokenization fails, the command is empty or unknown, or
             a non-``run`` action receives arguments.
     """
+    import shlex
+
     parts = shlex.split(command)
     if not parts:
         raise ValueError("Enter add, download, run [arguments], help, or quit")
@@ -639,6 +683,13 @@ def run_streamed_script(script: dict[str, Any], arguments: list[str]) -> int:
         RuntimeError: If verification fails, the file type is unsupported, or
             the child process cannot be started.
     """
+    import shlex
+    import subprocess
+    import tempfile
+    from rich.console import Console
+    from rich.text import Text
+    console = Console(highlight=False)
+
     contents, filename = fetch_verified_script(script)
     suffix = Path(filename).suffix
     with tempfile.NamedTemporaryFile(
@@ -670,6 +721,8 @@ def run_usage_examples(script: dict[str, Any]) -> list[str]:
         Valid examples rewritten as ``:run`` commands. Malformed examples are
         omitted.
     """
+    import shlex
+
     usage = script.get("usage")
     if not isinstance(usage, list):
         return []
@@ -701,6 +754,10 @@ def print_download_receipt(script: dict[str, Any], destination: Path) -> None:
     Raises:
         RuntimeError: If the manifest entry's download metadata is invalid.
     """
+    from rich.console import Console
+    from rich.text import Text
+    console = Console(highlight=False)
+
     _, sha256, _ = script_download_details(script)
     name = str(script.get("name") or script["id"])
     console.print(Text.assemble(("Downloaded:", "bold cyan"), " ", (name, "bold")))
@@ -721,6 +778,8 @@ def print_toolbox_art(
         message_style: Rich style to use for the optional message.
         stream: Destination stream. Defaults to ``sys.stdout``.
     """
+    from rich.console import Console
+
     output = sys.stdout if stream is None else stream
     rich_console = Console(file=output, highlight=False)
     for line in TOOLBOX_ART:
@@ -757,6 +816,8 @@ def safe_addstr(win: curses.window, y: int, x: int, text: str, attr: int = 0) ->
         text: Text to draw; it is clipped to the remaining window width.
         attr: Optional curses display attributes.
     """
+    import curses
+
     height, width = win.getmaxyx()
     if y < 0 or y >= height or x >= width:
         return
@@ -782,6 +843,8 @@ def draw_hline(win: curses.window, y: int, x: int, width: int) -> None:
         x: Zero-based starting column.
         width: Number of line characters to attempt to draw.
     """
+    import curses
+
     if width <= 0:
         return
     for i in range(width):
@@ -800,6 +863,8 @@ def draw_box(win: curses.window, y: int, x: int, h: int, w: int) -> None:
         h: Box height in terminal cells.
         w: Box width in terminal cells.
     """
+    import curses
+
     if h < 2 or w < 2:
         return
     try:
@@ -823,6 +888,8 @@ def init_colors() -> dict[str, int]:
         A mapping from semantic style names to curses attributes. Monochrome
         attributes are returned when terminal colors are unavailable.
     """
+    import curses
+
     colors = {
         "banner": curses.A_BOLD,
         "title": curses.A_BOLD,
@@ -873,6 +940,8 @@ def detail_field_lines(
     Returns:
         Tuples containing rendered text, semantic style, and hyperlink target.
     """
+    import textwrap
+
     prefix = f"{label}: "
     available = max(1, width - len(prefix))
     wrapped = textwrap.wrap(
@@ -972,6 +1041,9 @@ def tui_select(
         The ``url`` argument is retained as part of the selector interface but
         is not currently displayed.
     """
+    import curses
+    import textwrap
+
     try:
         curses.curs_set(0)
     except curses.error:
@@ -1489,6 +1561,8 @@ def toolfile_fingerprint(dependencies: list[dict[str, Any]]) -> str:
     Returns:
         SHA-256 digest of normalized declarations in stable order.
     """
+    import hashlib
+
     normalized = "\n".join(
         f"{item['name'].casefold()}{item['constraints']}"
         for item in sorted(dependencies, key=lambda item: item["name"].casefold())
@@ -1564,6 +1638,8 @@ def script_commit(script: dict[str, Any]) -> str:
     Raises:
         RuntimeError: If immutable commit provenance is unavailable.
     """
+    import urllib.request
+
     commit = script.get("commit") or script.get("git_commit")
     if isinstance(commit, str) and re.fullmatch(r"[0-9a-fA-F]{7,64}", commit.strip()):
         return commit.strip().lower()
@@ -1615,6 +1691,8 @@ def system_tool_records(
     for name in sorted(required_by, key=str.casefold):
         package_requirement = re.fullmatch(r"Python package:\s*(\S+)", name, re.IGNORECASE)
         if package_requirement:
+            from importlib import metadata as importlib_metadata
+
             package_name = package_requirement.group(1)
             try:
                 installed_version = importlib_metadata.version(package_name)
@@ -1655,6 +1733,9 @@ def system_tool_records(
         search_path = os.environ.get("PATH", "")
         if search_directory is not None:
             search_path = os.pathsep.join((str(search_directory), search_path))
+        import shutil
+        import subprocess
+
         executable = shutil.which(name, path=search_path)
         if executable is None:
             joined = ", ".join(sorted(required_by[name], key=str.casefold))
@@ -1756,9 +1837,9 @@ def install_project_dependencies(toolfile: Path, manifest: dict[str, Any], outpu
             previous = previous_tools.get(record["name"])
             if (previous and previous.get("version") not in {None, "unknown"}
                     and record["version"] not in {"unknown", previous.get("version")}):
-                console.print(
+                print_plain(
                     f"System dependency changed: {record['name']}: locked "
-                    f"{previous['version']}, installed {record['version']}", style="yellow"
+                    f"{previous['version']}, installed {record['version']}", color="yellow"
                 )
     write_lockfile(lock_path, {"lock_version": 1, "toolfile_hash": fingerprint,
                                "scripts": resolved_entries, "system_tools": records})
@@ -1825,7 +1906,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         SystemExit: If arguments are invalid or an immediate argparse action,
             such as ``--help`` or ``--version``, is requested.
     """
-    parser = argparse.ArgumentParser(
+    parser = PlainArgumentParser(
         prog="toolbox",
         description="Select and securely download a script from the toolbox manifest.",
         epilog=("Toolfile: toolbox install [SCRIPT] [--file Toolfile], "
@@ -1897,7 +1978,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         if args.completion_script_ids:
             for script in scripts:
-                console.print(script["id"], markup=False, highlight=False)
+                print_plain(script["id"])
             return 0
 
         command = args.script_names[0].casefold() if args.script_names else ""
@@ -1949,6 +2030,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.script_names:
             selected_scripts = [find_script(scripts, name) for name in args.script_names]
         else:
+            import curses
+
             selection = curses.wrapper(tui_select, scripts, args.manifest)
             if selection is None:
                 print_toolbox_art(
@@ -1987,10 +2070,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 0
 
     except KeyboardInterrupt:
-        error_console.print("\nCancelled.", style="yellow")
+        print_plain("\nCancelled.", color="yellow", stream=sys.stderr)
         return 130
     except Exception as exc:
-        error_console.print(Text.assemble(("Error:", "bold red"), f" {exc}"))
+        print_plain(f"Error: {exc}", color="red", stream=sys.stderr)
         return 1
 
 if __name__ == "__main__":
