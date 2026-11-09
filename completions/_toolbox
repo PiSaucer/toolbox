@@ -6,6 +6,7 @@ _toolbox_candidates() {
     '-h:show help'
     '--help:show help'
     '--version:show installed version'
+    '--refresh:check for a newer manifest'
     '-m:use a different manifest URL'
     '--manifest:use a different manifest URL'
     '-o:choose the download directory'
@@ -20,6 +21,7 @@ _toolbox() {
   _arguments \
     '(-h --help)'{-h,--help}'[show help]' \
     '--version[show installed version]' \
+    '--refresh[check for a newer manifest]' \
     '(-m --manifest)'{-m,--manifest}'[manifest URL]:URL:_urls' \
     '(-o --output-dir)'{-o,--output-dir}'[download directory]:directory:_directories' \
     '*:script or option:_toolbox_candidates'

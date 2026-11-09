@@ -8,7 +8,7 @@ _toolbox_completion() {
             return
             ;;
     esac
-    candidates="-h --help --version -m --manifest -o --output-dir"
+    candidates="-h --help --version --refresh -m --manifest -o --output-dir"
     candidates="$candidates $(toolbox --completion-script-ids 2>/dev/null)"
     COMPREPLY=($(compgen -W "$candidates" -- "$current"))
 }

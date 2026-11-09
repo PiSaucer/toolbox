@@ -86,6 +86,14 @@ pipx install .
 ./install.sh
 ```
 
+## Manifest caching
+
+Toolbox caches HTTP(S) manifests separately for each manifest URL in your user cache directory (`%LOCALAPPDATA%\toolbox` on Windows, `~/Library/Caches/toolbox` on macOS, or `$XDG_CACHE_HOME/toolbox` / `~/.cache/toolbox` on Linux). Fresh entries avoid a network request for up to ten minutes; server cache directives and response age can shorten that window.
+
+When an entry expires, Toolbox checks its ETag (or Last-Modified when no ETag is available). A `304 Not Modified` response reuses the saved manifest; a `200 OK` response replaces it with the validated JSON object. `no-cache` requires revalidation and `no-store` prevents storage. A failed check reports the network error rather than silently using an expired manifest. Cache read/write failures do not prevent a normal fetch, and local `file://` manifests are always read directly.
+
+Use `toolbox --refresh` to check immediately, even with a fresh cache. `toolbox update` and `toolbox update SCRIPT` always check immediately as well. Initial downloads and revalidation still require a network connection, so caching does not fix a slow connection attempt.
+
 ## Toolfile
 
 Scripts may declare Python packages as well as host commands. For example, `whisper-transcribe` requires:

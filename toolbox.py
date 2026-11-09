@@ -19,7 +19,10 @@ import shutil
 import subprocess
 import tempfile
 import textwrap
+import time
+import urllib.error
 import urllib.request
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import quote, unquote, urlparse
@@ -191,11 +194,59 @@ class VersionAction(argparse.Action):
     ) -> None:
         parser.exit(message=version_text_with_update(parser.prog) + "\n")
 
-def fetch_manifest(url: str) -> dict[str, Any]:
-    """Fetch and validate a JSON manifest.
+def manifest_cache_path(url: str) -> Path:
+    """Return a per-user cache filename keyed by the complete manifest URL."""
+    if os.name == "nt":
+        root = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+    elif sys.platform == "darwin":
+        root = Path.home() / "Library" / "Caches"
+    else:
+        root = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    return root / "toolbox" / (hashlib.sha256(url.encode("utf-8")).hexdigest() + ".json")
+
+def manifest_cache_lifetime(headers: dict[str, str], now: float) -> float:
+    """Limit freshness to ten minutes, respecting server age and directives."""
+    directives = {
+        key.strip().lower(): value.strip().strip('"')
+        for part in headers.get("cache-control", "").split(",")
+        for key, _, value in [part.partition("=")]
+    }
+    if "no-cache" in directives or "no-store" in directives:
+        return 0
+    try:
+        lifetime = min(600, max(0, int(directives.get("max-age", "600"))))
+        age = max(0, int(headers.get("age", "0")))
+        if "date" in headers:
+            age = max(age, now - parsedate_to_datetime(headers["date"]).timestamp())
+        return max(0, lifetime - age)
+    except (ValueError, TypeError, OverflowError):
+        return 0
+
+def save_manifest_cache(path: Path, entry: dict[str, Any]) -> None:
+    """Atomically save a cache entry; caching failures must not break fetching."""
+    temporary_path = None
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=".manifest-", delete=False) as temporary:
+            temporary_path = Path(temporary.name)
+            json.dump(entry, temporary)
+        os.replace(temporary_path, path)
+    except OSError:
+        pass
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+def fetch_manifest(url: str, refresh: bool = False) -> dict[str, Any]:
+    """Fetch and validate a JSON manifest, caching HTTP(S) responses.
 
     Args:
         url: HTTP or HTTPS URL of the manifest.
+        refresh: Revalidate even when the cached response is still fresh.
 
     Returns:
         The decoded manifest object.
@@ -206,21 +257,65 @@ def fetch_manifest(url: str) -> dict[str, Any]:
             is not an object.
         json.JSONDecodeError: If the response is not valid JSON.
     """
-    req = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": f"toolbox-tui/{__version__}",
-            "Accept": "application/json",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=15) as response:
+    cache_path = manifest_cache_path(url) if urlparse(url).scheme in {"http", "https"} else None
+    cached = None
+    if cache_path is not None:
+        try:
+            entry = json.loads(cache_path.read_text(encoding="utf-8"))
+            if (isinstance(entry, dict) and entry.get("url") == url
+                    and isinstance(entry.get("manifest"), dict)
+                    and isinstance(entry.get("headers"), dict)
+                    and all(isinstance(k, str) and isinstance(v, str)
+                            for k, v in entry["headers"].items())
+                    and isinstance(entry.get("stored_at"), (int, float))
+                    and isinstance(entry.get("expires_at"), (int, float))):
+                cached = entry
+        except (OSError, ValueError):
+            pass
+    now = time.time()
+    if cached and not refresh and cached["stored_at"] <= now < cached["expires_at"]:
+        return cached["manifest"]
+
+    headers = {"User-Agent": f"toolbox-tui/{__version__}", "Accept": "application/json"}
+    if cached:
+        if cached["headers"].get("etag"):
+            headers["If-None-Match"] = cached["headers"]["etag"]
+        elif cached["headers"].get("last-modified"):
+            headers["If-Modified-Since"] = cached["headers"]["last-modified"]
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        response = urllib.request.urlopen(req, timeout=15)
+    except urllib.error.HTTPError as exc:
+        if exc.code != 304 or cached is None:
+            raise
+        response = exc
+    with response:
         status = getattr(response, "status", 200)
-        if status != 200:
+        response_headers = {key.lower(): value for key, value in response.headers.items()}
+        if status == 304 and cached is not None:
+            manifest = cached["manifest"]
+            # Age and Date describe this response, not the previous response.
+            previous = {k: v for k, v in cached["headers"].items() if k not in {"age", "date"}}
+            response_headers = {**previous, **response_headers}
+        elif status in {200, None}:  # file:// responses have no HTTP status.
+            manifest = json.loads(response.read().decode("utf-8"))
+        else:
             raise RuntimeError(f"failed to fetch manifest: HTTP {status}")
-        data = response.read()
-    manifest = json.loads(data.decode("utf-8"))
     if not isinstance(manifest, dict):
         raise RuntimeError("manifest must be a JSON object")
+    if cache_path is not None:
+        if "no-store" in response_headers.get("cache-control", "").lower():
+            try:
+                cache_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        else:
+            now = time.time()
+            save_manifest_cache(cache_path, {
+                "url": url, "manifest": manifest, "headers": response_headers,
+                "stored_at": now,
+                "expires_at": now + manifest_cache_lifetime(response_headers, now),
+            })
     return manifest
 
 def script_download_details(script: dict[str, Any]) -> tuple[str, str, str]:
@@ -1761,6 +1856,11 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         help=f"manifest URL (default: {DEFAULT_URL})",
     )
     parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="check for a newer manifest",
+    )
+    parser.add_argument(
         "-o",
         "--output-dir",
         type=Path,
@@ -1789,7 +1889,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
 
     try:
-        manifest = fetch_manifest(args.manifest)
+        manifest = fetch_manifest(
+            args.manifest,
+            refresh=args.refresh or bool(args.script_names and args.script_names[0].casefold() == "update"),
+        )
         scripts = get_scripts(manifest)
 
         if args.completion_script_ids:
