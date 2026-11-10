@@ -639,12 +639,18 @@ def parse_tui_command(command: str) -> tuple[str, list[str]]:
         raise ValueError(f"{action} does not accept arguments")
     return action, parts[1:]
 
-def temporary_script_command(script_path: Path, arguments: list[str]) -> list[str]:
+def temporary_script_command(
+    script_path: Path,
+    arguments: list[str],
+    python_executable: Optional[str] = None,
+) -> list[str]:
     """Build an interpreter command for a temporary script.
 
     Args:
         script_path: Path to the downloaded temporary file.
         arguments: Command-line arguments to pass to the script.
+        python_executable: Optional Python interpreter selected from the
+            available system interpreters.
 
     Returns:
         Command components suitable for ``subprocess.run``.
@@ -655,7 +661,7 @@ def temporary_script_command(script_path: Path, arguments: list[str]) -> list[st
     filename = script_path.name
     suffix = Path(filename).suffix.casefold()
     if suffix == ".py":
-        return [sys.executable, str(script_path), *arguments]
+        return [python_executable or sys.executable, str(script_path), *arguments]
     if suffix == ".sh":
         if os.name == "nt":
             raise RuntimeError(
@@ -700,7 +706,15 @@ def run_streamed_script(script: dict[str, Any], arguments: list[str]) -> int:
         temporary.write(contents)
         temporary.flush()
         script_path = Path(temporary.name)
-        command = temporary_script_command(script_path, arguments)
+        dependency_records = system_tool_records([script])
+        python_record = next((record for record in dependency_records
+                              if record["name"] == "Python"
+                              or record["name"].casefold().startswith("python package:")), None)
+        command = temporary_script_command(
+            script_path,
+            arguments,
+            python_executable=python_record["path"] if python_record else None,
+        )
         console.print(
             Text.assemble(("Running:", "bold cyan"), " ", shlex.join(command)),
             soft_wrap=True,
@@ -1483,6 +1497,150 @@ def semantic_version(value: str) -> tuple[int, ...]:
         raise ValueError(f"invalid semantic version: {value}")
     return tuple(int(part or 0) for part in match.groups())
 
+def python_requirement_details(
+    requirements: list[str],
+) -> tuple[list[str], Optional[tuple[int, ...]]]:
+    """Extract Python package names and the strongest minimum Python version."""
+    packages: list[str] = []
+    minimum: Optional[tuple[int, ...]] = None
+    for requirement in requirements:
+        if not isinstance(requirement, str):
+            continue
+        package = re.fullmatch(r"Python package:\s*(\S+)", requirement.strip(), re.IGNORECASE)
+        if package and package.group(1).casefold() not in {p.casefold() for p in packages}:
+            packages.append(package.group(1))
+            continue
+        version = re.fullmatch(r"Python\s+(\d+(?:\.\d+)*)\+", requirement.strip(), re.IGNORECASE)
+        if version:
+            found = semantic_version(version.group(1))
+            if minimum is None or found > minimum:
+                minimum = found
+    return packages, minimum
+
+def python_interpreter_candidates() -> list[str]:
+    """Return discoverable Python interpreters, preferring the user's PATH."""
+    import shutil
+
+    candidates: list[str] = []
+    for name in ("python3", "python", *(f"python3.{minor}" for minor in range(9, 21))):
+        executable = shutil.which(name)
+        if executable and executable not in candidates:
+            candidates.append(executable)
+    if sys.executable and sys.executable not in candidates:
+        candidates.append(sys.executable)
+    # Different command names can be symlinks to the same interpreter.
+    unique: list[str] = []
+    seen: set[str] = set()
+    for executable in candidates:
+        identity = os.path.normcase(os.path.realpath(executable))
+        if identity not in seen:
+            seen.add(identity)
+            unique.append(executable)
+    return unique
+
+def inspect_python_interpreter(executable: str, packages: list[str]) -> Optional[dict[str, Any]]:
+    """Read an interpreter's version and installed distribution versions."""
+    import subprocess
+
+    probe = (
+        "import importlib.metadata as metadata\n"
+        "import json, sys\n"
+        "packages = json.loads(sys.argv[1])\n"
+        "versions = {}\n"
+        "for package in packages:\n"
+        "    try:\n"
+        "        versions[package] = metadata.version(package)\n"
+        "    except metadata.PackageNotFoundError:\n"
+        "        versions[package] = None\n"
+        "print(json.dumps({'python': list(sys.version_info[:3]), 'packages': versions}))\n"
+    )
+    try:
+        result = subprocess.run(
+            [executable, "-c", probe, json.dumps(packages)],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+        data = json.loads(result.stdout)
+        if not isinstance(data, dict) or not isinstance(data.get("python"), list):
+            return None
+        return {"path": executable, "python": tuple(data["python"]),
+                "packages": data.get("packages", {})}
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError, TypeError, ValueError):
+        return None
+
+def resolve_python_interpreter(
+    requirements: list[str],
+    required_by: Optional[dict[str, list[str]]] = None,
+) -> Optional[dict[str, Any]]:
+    """Find the best available interpreter for the declared requirements.
+
+    Interpreters on PATH are checked before Toolbox's own interpreter so a
+    Homebrew or pipx installation can use packages from the user's Python.
+    If none satisfies everything, return the closest candidate with a warning
+    rather than blocking installation or execution.
+    """
+    import shlex
+
+    packages, minimum = python_requirement_details(requirements)
+    if not packages and minimum is None:
+        return None
+    checked: list[dict[str, Any]] = []
+    for executable in python_interpreter_candidates():
+        candidate = inspect_python_interpreter(executable, packages)
+        if candidate is None:
+            continue
+        checked.append(candidate)
+        if minimum is not None and candidate["python"] < minimum:
+            continue
+        if any(candidate["packages"].get(package) is None for package in packages):
+            continue
+        candidate["warning"] = None
+        return candidate
+
+    owners = sorted({owner for values in (required_by or {}).values() for owner in values}, key=str.casefold)
+    details: list[str] = []
+    if not checked:
+        checked.append({
+            "path": sys.executable,
+            "python": tuple(sys.version_info[:3]),
+            "packages": {package: None for package in packages},
+        })
+    candidate = max(
+        checked,
+        key=lambda item: (
+            minimum is None or item["python"] >= minimum,
+            sum(item["packages"].get(package) is not None for package in packages),
+            item["python"],
+        ),
+    )
+    if packages:
+        missing = [package for package in packages if candidate["packages"].get(package) is None]
+        if missing:
+            details.append("Selected interpreter is missing Python package(s): " + ", ".join(missing))
+        candidates = python_interpreter_candidates()
+        install_with = next((candidate["path"] for candidate in checked
+                             if minimum is None or candidate["python"] >= minimum),
+                            candidates[0] if candidates else "python3")
+        details.append(
+            "Install with: "
+            + shlex.join([install_with, "-m", "pip", "install", *packages])
+        )
+    if minimum is not None and not any(candidate["python"] >= minimum for candidate in checked):
+        details.append(f"Required Python version: >= {'.'.join(map(str, minimum))}")
+    if checked:
+        details.append("Checked: " + ", ".join(
+            f"{candidate['path']} ({'.'.join(map(str, candidate['python']))})"
+            for candidate in checked
+        ))
+    if owners:
+        details.append("Required by: " + ", ".join(owners))
+    candidate["warning"] = "\n".join(details) or "No usable Python interpreter was found"
+    return candidate
+
 def version_satisfies(version: str, constraints: str) -> bool:
     """Return whether a version satisfies comma-separated Toolfile bounds.
 
@@ -1676,8 +1834,8 @@ def system_tool_records(
     Returns:
         Stable system-tool records including path, detected version, and users.
 
-    Raises:
-        RuntimeError: If a required host command cannot be found.
+    Missing host commands are recorded and reported as warnings so callers can
+    continue with installation or script execution.
     """
     required_by: dict[str, list[str]] = {}
     for script in scripts:
@@ -1687,43 +1845,35 @@ def system_tool_records(
         for requirement in requirements:
             if isinstance(requirement, str) and requirement.strip():
                 required_by.setdefault(requirement.strip(), []).append(canonical_dependency(script))
+    python_names = [name for name in required_by if re.fullmatch(
+        r"Python package:\s*\S+|Python\s+\d+(?:\.\d+)*\+", name, re.IGNORECASE
+    )]
+    python_info = resolve_python_interpreter(
+        python_names, {name: required_by[name] for name in python_names}
+    ) if python_names else None
+    if python_info and python_info.get("warning"):
+        print_plain(f"Warning: {python_info['warning']}", color="yellow", stream=sys.stderr)
     records: list[dict[str, Any]] = []
     for name in sorted(required_by, key=str.casefold):
         package_requirement = re.fullmatch(r"Python package:\s*(\S+)", name, re.IGNORECASE)
         if package_requirement:
-            from importlib import metadata as importlib_metadata
-
             package_name = package_requirement.group(1)
-            try:
-                installed_version = importlib_metadata.version(package_name)
-            except importlib_metadata.PackageNotFoundError:
-                joined = ", ".join(sorted(required_by[name], key=str.casefold))
-                raise RuntimeError(
-                    f"Missing required Python package: {package_name}\n"
-                    f"Install with: {sys.executable} -m pip install {package_name}\n"
-                    f"Required by: {joined}"
-                ) from None
-            records.append({"name": name, "path": sys.executable,
-                            "version": installed_version,
+            installed_version = next(
+                version for candidate_name, version in python_info["packages"].items()
+                if candidate_name.casefold() == package_name.casefold()
+            )
+            records.append({"name": name, "path": python_info["path"],
+                            "version": installed_version or "missing",
                             "required_by": sorted(required_by[name], key=str.casefold)})
             continue
         python_requirement = re.fullmatch(
             r"python\s+(\d+(?:\.\d+)*)\+", name, re.IGNORECASE
         )
         if python_requirement:
-            required_version = semantic_version(python_requirement.group(1))
-            installed_version = tuple(sys.version_info[:3])
-            if installed_version < required_version:
-                joined = ", ".join(sorted(required_by[name], key=str.casefold))
-                found = ".".join(str(part) for part in installed_version)
-                raise RuntimeError(
-                    f"Required system dependency not satisfied: Python>="
-                    f"{python_requirement.group(1)}\nFound: {found}\n"
-                    f"Required by: {joined}"
-                )
+            installed_version = python_info["python"]
             records.append({
                 "name": "Python",
-                "path": sys.executable,
+                "path": python_info["path"],
                 "version": ".".join(str(part) for part in installed_version),
                 "required_by": sorted(required_by[name], key=str.casefold),
             })
@@ -1739,7 +1889,14 @@ def system_tool_records(
         executable = shutil.which(name, path=search_path)
         if executable is None:
             joined = ", ".join(sorted(required_by[name], key=str.casefold))
-            raise RuntimeError(f"Missing required system tool: {name}\nRequired by: {joined}")
+            print_plain(
+                f"Warning: Missing required system tool: {name}\nRequired by: {joined}",
+                color="yellow",
+                stream=sys.stderr,
+            )
+            records.append({"name": name, "path": None, "version": "missing",
+                            "required_by": sorted(required_by[name], key=str.casefold)})
+            continue
         version = "unknown"
         try:
             output = subprocess.run([executable, "--version"], capture_output=True, text=True, timeout=3, check=False)

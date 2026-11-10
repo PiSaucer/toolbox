@@ -102,6 +102,8 @@ Scripts may declare Python packages as well as host commands. For example, `whis
 python3 -m pip install openai-whisper
 ```
 
+Toolbox checks Python interpreters available on `PATH` (such as `python3` and versioned `python3.x` commands) and uses one that satisfies a script's declared Python requirements when possible. If no interpreter satisfies them all, Toolbox warns and continues with the closest available interpreter. Python scripts are run with the selected interpreter, so packages installed in your regular Python environment can be used by Toolbox-installed scripts. Missing host commands declared by shell or other scripts also produce warnings, and Toolbox continues with installation or execution.
+
 Toolbox projects can use a human-maintained `Toolfile` to declare the scripts they need.
 
 ```text
